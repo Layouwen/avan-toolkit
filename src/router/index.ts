@@ -1,19 +1,18 @@
 import { createRouter, createMemoryHistory } from 'vue-router';
 
-import HomeView from '../views/HomeView.vue';
-import User from '../views/User.vue'
+import BlogSync from '../views/BlogSync.vue';
 
 const router = createRouter({
   history: createMemoryHistory(),
   routes: [
     {
       path: '/',
-      component: HomeView,
+      redirect: '/sync',
     },
     {
-      path: '/user',
-      component: User
-    }
+      path: '/sync',
+      component: BlogSync,
+    },
   ],
 });
 

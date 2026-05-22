@@ -1,17 +1,21 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import { getConfig, setConfig } from './main/configManager';
+import { runSyncPipeline } from './main/syncPipeline';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
 
+let mainWindow: BrowserWindow | null = null;
+
 const createWindow = () => {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+  mainWindow = new BrowserWindow({
+    width: 900,
+    height: 700,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -54,3 +58,30 @@ app.on('activate', () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
+
+// IPC Handlers
+ipcMain.handle('config:get', () => getConfig());
+
+ipcMain.handle('config:set', (_event, config) => setConfig(config));
+
+ipcMain.handle('dialog:selectDir', async () => {
+  if (!mainWindow) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+
+ipcMain.handle('sync:start', async () => {
+  const config = await getConfig();
+  try {
+    await runSyncPipeline(config, (message, level) => {
+      mainWindow?.webContents.send('sync:log', message, level);
+    });
+    mainWindow?.webContents.send('sync:done', true);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    mainWindow?.webContents.send('sync:log', `错误: ${message}`, 'error');
+    mainWindow?.webContents.send('sync:done', false, message);
+  }
+});
