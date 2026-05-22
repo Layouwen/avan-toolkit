@@ -1,7 +1,12 @@
 <script setup lang="ts">
-console.log('hello Avan Toolkit');
+const a = 1;
+console.log("====================================");
+console.log(a);
+console.log("====================================");
 </script>
 
 <template>
-  <h1>hello Avan Toolkit</h1>
+  <router-link to="/">home</router-link>
+  <router-link to="/user">user</router-link>
+  <router-view />
 </template>
