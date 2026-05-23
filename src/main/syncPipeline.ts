@@ -4,6 +4,8 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import matter from 'gray-matter';
+import { v4 as uuidv4 } from 'uuid';
 
 export type LogLevel = 'info' | 'success' | 'error';
 export type LogCallback = (message: string, level: LogLevel) => void;
@@ -40,8 +42,21 @@ async function copyMdFiles(srcDir: string, destDir: string, cb: LogCallback): Pr
   const mdFiles = entries.filter(f => f.endsWith('.md'));
   for (const file of mdFiles) {
     const destFile = stripLeadingIndex(file);
+    const srcPath = path.join(srcDir, file);
+    const destPath = path.join(destDir, destFile);
 
-    await fs.copyFile(path.join(srcDir, file), path.join(destDir, destFile));
+    const raw = await fs.readFile(srcPath, 'utf8');
+    const parsed = matter(raw);
+
+    if (!parsed.data.uuid) {
+      parsed.data.uuid = uuidv4();
+      const updated = matter.stringify(parsed.content, parsed.data);
+      await fs.writeFile(srcPath, updated, 'utf8');
+      log(cb, `  已生成 uuid: ${destFile}`, 'info');
+    }
+
+    const finalContent = matter.stringify(parsed.content, parsed.data);
+    await fs.writeFile(destPath, finalContent, 'utf8');
     log(cb, `  已复制: ${destFile}`, 'info');
   }
   return mdFiles.length;
