@@ -5,6 +5,7 @@ import { app } from 'electron';
 export interface AppConfig {
   obsidianBlogDir: string;
   hexoBlogDir: string;
+  locale: string;
 }
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
@@ -12,6 +13,7 @@ const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
 const DEFAULT_CONFIG: AppConfig = {
   obsidianBlogDir: '',
   hexoBlogDir: '',
+  locale: 'zh-CN',
 };
 
 export async function getConfig(): Promise<AppConfig> {

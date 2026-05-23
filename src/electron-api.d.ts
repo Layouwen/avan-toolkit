@@ -3,6 +3,7 @@
 export interface AppConfig {
   obsidianBlogDir: string;
   hexoBlogDir: string;
+  locale: string;
 }
 
 export interface ElectronAPI {

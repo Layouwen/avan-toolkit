@@ -1,7 +1,15 @@
 <script setup lang="ts">
+import { onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
+
+onMounted(async () => {
+  const config = await window.electronAPI.getConfig();
+  if (config.locale) {
+    locale.value = config.locale;
+  }
+});
 </script>
 
 <template>

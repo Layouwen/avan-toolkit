@@ -36,8 +36,10 @@ function openLink(url: string) {
   window.electronAPI.openExternal(url);
 }
 
-function toggleLocale() {
+async function toggleLocale() {
   locale.value = locale.value === 'zh-CN' ? 'en' : 'zh-CN';
+  const config = await window.electronAPI.getConfig();
+  await window.electronAPI.setConfig({ ...config, locale: locale.value });
 }
 </script>
 
