@@ -19,4 +19,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onSyncDone: (cb: (success: boolean, error?: string) => void) => {
     ipcRenderer.once('sync:done', (_event, success, error) => cb(success, error));
   },
+  openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
 });

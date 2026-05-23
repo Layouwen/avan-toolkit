@@ -13,6 +13,7 @@ export interface ElectronAPI {
   onSyncLog: (cb: (message: string, level: 'info' | 'success' | 'error') => void) => void;
   offSyncLog: () => void;
   onSyncDone: (cb: (success: boolean, error?: string) => void) => void;
+  openExternal: (url: string) => Promise<void>;
 }
 
 declare global {

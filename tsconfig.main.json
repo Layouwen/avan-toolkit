@@ -10,6 +10,7 @@
     "src/main.ts",
     "src/main/**/*",
     "src/preload.ts",
+    "forge.env.d.ts",
     "forge.config.ts",
     "vite.main.config.mts",
     "vite.preload.config.mts",

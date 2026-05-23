@@ -11,8 +11,8 @@
       博客同步
     </router-link>
     <span class="text-[#444]">|</span>
-    <router-link to="/user" class="text-[#aaa] hover:text-[#e0e0e0] transition-colors">
-      用户信息
+    <router-link to="/about" class="text-[#aaa] hover:text-[#e0e0e0] transition-colors">
+      关于
     </router-link>
   </nav>
   <div class="h-full">

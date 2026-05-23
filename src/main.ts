@@ -1,6 +1,6 @@
 import path from 'node:path';
 import process from 'node:process';
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import started from 'electron-squirrel-startup';
 import { getConfig, setConfig } from './main/configManager';
 import { runSyncPipeline } from './main/syncPipeline';
@@ -62,6 +62,8 @@ app.on('activate', () => {
 // code. You can also put them in separate files and import them here.
 
 // IPC Handlers
+ipcMain.handle('shell:openExternal', (_event, url: string) => shell.openExternal(url));
+
 ipcMain.handle('config:get', () => getConfig());
 
 ipcMain.handle('config:set', (_event, config) => setConfig(config));
