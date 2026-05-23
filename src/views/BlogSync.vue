@@ -77,34 +77,42 @@ function clearLogs() {
 </script>
 
 <template>
-  <div class="sync-page">
+  <div class="flex flex-col gap-5 p-6 h-full">
     <!-- Config Section -->
-    <section class="config-section">
-      <h2 class="section-title">
+    <section class="bg-[#1e1e1e] border border-[#333] rounded-lg px-5 py-4">
+      <h2 class="mb-3 text-[13px] font-semibold text-[#ccc] uppercase tracking-wider">
         ⚙️ 配置
       </h2>
-      <div class="field">
-        <label>Obsidian Blog 目录</label>
-        <div class="input-row">
+      <div class="mb-3">
+        <label class="block text-[13px] text-[#aaa] mb-1.5">Obsidian Blog 目录</label>
+        <div class="flex gap-2">
           <input
             v-model="config.obsidianBlogDir"
+            class="flex-1 bg-[#2a2a2a] border border-[#444] rounded-md px-2.5 py-1.75 text-[#e0e0e0] text-[13px] outline-none transition-colors focus:border-[#5a9fd4]"
             placeholder="例如：D:\Obsidian\blog"
             @blur="saveConfig"
           >
-          <button class="btn-browse" @click="browseDir('obsidianBlogDir')">
+          <button
+            class="bg-[#2d3748] border border-[#4a5568] rounded-md text-[#cbd5e0] text-[13px] px-3.5 py-1.75 cursor-pointer whitespace-nowrap hover:bg-[#3d4a5c] transition-colors"
+            @click="browseDir('obsidianBlogDir')"
+          >
             浏览
           </button>
         </div>
       </div>
-      <div class="field">
-        <label>Hexo 项目目录</label>
-        <div class="input-row">
+      <div>
+        <label class="block text-[13px] text-[#aaa] mb-1.5">Hexo 项目目录</label>
+        <div class="flex gap-2">
           <input
             v-model="config.hexoBlogDir"
+            class="flex-1 bg-[#2a2a2a] border border-[#444] rounded-md px-2.5 py-1.75 text-[#e0e0e0] text-[13px] outline-none transition-colors focus:border-[#5a9fd4]"
             placeholder="例如：D:\code\blog"
             @blur="saveConfig"
           >
-          <button class="btn-browse" @click="browseDir('hexoBlogDir')">
+          <button
+            class="bg-[#2d3748] border border-[#4a5568] rounded-md text-[#cbd5e0] text-[13px] px-3.5 py-1.75 cursor-pointer whitespace-nowrap hover:bg-[#3d4a5c] transition-colors"
+            @click="browseDir('hexoBlogDir')"
+          >
             浏览
           </button>
         </div>
@@ -112,252 +120,69 @@ function clearLogs() {
     </section>
 
     <!-- Action Section -->
-    <section class="action-section">
+    <section class="flex items-center gap-4">
       <button
-        class="btn-sync"
-        :class="{ loading: syncing }"
+        class="flex items-center gap-2 bg-[#2d6a4f] rounded-lg text-white text-sm font-semibold px-6 py-2.5 cursor-pointer transition-colors hover:bg-[#3a8a65] disabled:opacity-50 disabled:cursor-not-allowed"
         :disabled="syncing || !config.obsidianBlogDir || !config.hexoBlogDir"
         @click="startSync"
       >
-        <span v-if="syncing" class="spinner" />
+        <span v-if="syncing" class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
         <span>{{ syncing ? '同步中...' : '一键同步并发布' }}</span>
       </button>
 
-      <div class="status-badge" :class="status">
-        <span class="dot" />
+      <div
+        class="flex items-center gap-1.5 text-[13px]"
+        :class="{
+          'text-[#aaa]': status === 'idle',
+          'text-[#f6c90e]': status === 'syncing',
+          'text-[#40c074]': status === 'success',
+          'text-[#e05252]': status === 'error',
+        }"
+      >
+        <span
+          class="w-2 h-2 rounded-full"
+          :class="{
+            'bg-[#555]': status === 'idle',
+            'bg-[#f6c90e]': status === 'syncing',
+            'animate-pulse': status === 'syncing',
+            'bg-[#40c074]': status === 'success',
+            'bg-[#e05252]': status === 'error',
+          }"
+        />
         <span>{{ { idle: 'Idle', syncing: 'Syncing', success: 'Success', error: 'Error' }[status] }}</span>
       </div>
     </section>
 
     <!-- Log Section -->
-    <section class="log-section">
-      <div class="log-header">
-        <h2 class="section-title">
+    <section class="flex flex-col flex-1 min-h-0 bg-[#1e1e1e] border border-[#333] rounded-lg px-5 py-4">
+      <div class="flex items-center justify-between mb-2.5">
+        <h2 class="text-[13px] font-semibold text-[#ccc] uppercase tracking-wider">
           📋 日志
         </h2>
-        <button class="btn-clear" @click="clearLogs">
+        <button
+          class="bg-transparent border border-[#444] rounded text-[#777] text-xs px-2.5 py-0.5 cursor-pointer hover:text-[#aaa] hover:border-[#666] transition-colors"
+          @click="clearLogs"
+        >
           清空
         </button>
       </div>
-      <div ref="logContainer" class="log-container">
+      <div ref="logContainer" class="flex-1 overflow-y-auto bg-[#141414] rounded-md p-3 font-mono text-[12.5px] leading-relaxed">
         <div
           v-for="line in logs"
           :key="line.id"
-          class="log-line"
-          :class="line.level"
+          class="whitespace-pre-wrap break-all"
+          :class="{
+            'text-[#c9d1d9]': line.level === 'info',
+            'text-[#40c074]': line.level === 'success',
+            'text-[#e05252]': line.level === 'error',
+          }"
         >
           {{ line.text }}
         </div>
-        <div v-if="logs.length === 0" class="log-empty">
+        <div v-if="logs.length === 0" class="text-[#555] italic text-center mt-5">
           暂无日志，点击「一键同步并发布」开始
         </div>
       </div>
     </section>
   </div>
 </template>
-
-<style scoped>
-.sync-page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 24px;
-  height: 100%;
-  box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-.section-title {
-  margin: 0 0 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #ccc;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* Config */
-.config-section {
-  background: #1e1e1e;
-  border: 1px solid #333;
-  border-radius: 8px;
-  padding: 16px 20px;
-}
-
-.field {
-  margin-bottom: 12px;
-}
-.field:last-child {
-  margin-bottom: 0;
-}
-
-.field label {
-  display: block;
-  font-size: 13px;
-  color: #aaa;
-  margin-bottom: 6px;
-}
-
-.input-row {
-  display: flex;
-  gap: 8px;
-}
-
-.input-row input {
-  flex: 1;
-  background: #2a2a2a;
-  border: 1px solid #444;
-  border-radius: 6px;
-  padding: 7px 10px;
-  color: #e0e0e0;
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.input-row input:focus {
-  border-color: #5a9fd4;
-}
-
-.btn-browse {
-  background: #2d3748;
-  border: 1px solid #4a5568;
-  border-radius: 6px;
-  color: #cbd5e0;
-  font-size: 13px;
-  padding: 7px 14px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s;
-}
-.btn-browse:hover {
-  background: #3d4a5c;
-}
-
-/* Action */
-.action-section {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.btn-sync {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #2d6a4f;
-  border: none;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  padding: 10px 24px;
-  cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
-}
-.btn-sync:hover:not(:disabled) {
-  background: #3a8a65;
-}
-.btn-sync:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.status-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #aaa;
-}
-.status-badge .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #555;
-}
-.status-badge.idle .dot   { background: #555; }
-.status-badge.syncing .dot { background: #f6c90e; animation: pulse 1s infinite; }
-.status-badge.success .dot { background: #40c074; }
-.status-badge.error .dot   { background: #e05252; }
-.status-badge.syncing { color: #f6c90e; }
-.status-badge.success { color: #40c074; }
-.status-badge.error   { color: #e05252; }
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-/* Log */
-.log-section {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  background: #1e1e1e;
-  border: 1px solid #333;
-  border-radius: 8px;
-  padding: 16px 20px;
-}
-
-.log-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.btn-clear {
-  background: transparent;
-  border: 1px solid #444;
-  border-radius: 5px;
-  color: #777;
-  font-size: 12px;
-  padding: 3px 10px;
-  cursor: pointer;
-}
-.btn-clear:hover {
-  color: #aaa;
-  border-color: #666;
-}
-
-.log-container {
-  flex: 1;
-  overflow-y: auto;
-  background: #141414;
-  border-radius: 6px;
-  padding: 12px;
-  font-family: 'Cascadia Code', 'Fira Mono', Consolas, monospace;
-  font-size: 12.5px;
-  line-height: 1.6;
-}
-
-.log-line {
-  color: #c9d1d9;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-.log-line.success { color: #40c074; }
-.log-line.error   { color: #e05252; }
-
-.log-empty {
-  color: #555;
-  font-style: italic;
-  text-align: center;
-  margin-top: 20px;
-}
-</style>
