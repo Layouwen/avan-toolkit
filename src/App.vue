@@ -1,18 +1,21 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 </script>
 
 <template>
   <nav class="flex items-center gap-3 px-4 py-2 bg-[#1e1e1e] border-b border-[#333] text-sm">
     <router-link to="/" class="text-[#aaa] hover:text-[#e0e0e0] transition-colors">
-      Home
+      {{ t('nav.home') }}
     </router-link>
     <span class="text-[#444]">|</span>
     <router-link to="/sync" class="text-[#aaa] hover:text-[#e0e0e0] transition-colors">
-      博客同步
+      {{ t('nav.blogSync') }}
     </router-link>
     <span class="text-[#444]">|</span>
     <router-link to="/about" class="text-[#aaa] hover:text-[#e0e0e0] transition-colors">
-      关于
+      {{ t('nav.about') }}
     </router-link>
   </nav>
   <div class="h-full">

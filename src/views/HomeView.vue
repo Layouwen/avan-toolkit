@@ -1,21 +1,24 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 
 const router = useRouter();
+const { t } = useI18n();
 
-const tools = [
+const tools = computed(() => [
   {
-    title: '博客同步',
-    description: '将 Obsidian 笔记同步到 Hexo 博客并自动部署',
+    title: t('home.tools.blogSync.title'),
+    description: t('home.tools.blogSync.description'),
     path: '/sync',
   },
-];
+]);
 </script>
 
 <template>
   <div class="p-6">
     <h1 class="text-xl font-semibold text-[#e0e0e0] mb-6">
-      工具导航
+      {{ t('home.title') }}
     </h1>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div
