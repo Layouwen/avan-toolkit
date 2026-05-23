@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'node:path';
+import process from 'node:process';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import started from 'electron-squirrel-startup';
 import { getConfig, setConfig } from './main/configManager';
 import { runSyncPipeline } from './main/syncPipeline';
@@ -11,7 +12,7 @@ if (started) {
 
 let mainWindow: BrowserWindow | null = null;
 
-const createWindow = () => {
+function createWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 900,
@@ -24,7 +25,8 @@ const createWindow = () => {
   // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-  } else {
+  }
+  else {
     mainWindow.loadFile(
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
     );
@@ -32,7 +34,7 @@ const createWindow = () => {
 
   // Open the DevTools.
   mainWindow.webContents.openDevTools();
-};
+}
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -65,7 +67,8 @@ ipcMain.handle('config:get', () => getConfig());
 ipcMain.handle('config:set', (_event, config) => setConfig(config));
 
 ipcMain.handle('dialog:selectDir', async () => {
-  if (!mainWindow) return null;
+  if (!mainWindow)
+    return null;
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
   });
@@ -79,7 +82,8 @@ ipcMain.handle('sync:start', async () => {
       mainWindow?.webContents.send('sync:log', message, level);
     });
     mainWindow?.webContents.send('sync:done', true);
-  } catch (err) {
+  }
+  catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     mainWindow?.webContents.send('sync:log', `错误: ${message}`, 'error');
     mainWindow?.webContents.send('sync:done', false, message);

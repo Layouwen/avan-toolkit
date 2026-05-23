@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import type { AppConfig } from '../electron-api.d';
+import { nextTick, onMounted, onUnmounted, ref } from 'vue';
 
 interface LogLine {
   id: number;
@@ -44,7 +44,8 @@ async function saveConfig() {
 }
 
 async function startSync() {
-  if (syncing.value) return;
+  if (syncing.value)
+    return;
   syncing.value = true;
   status.value = 'syncing';
   logs.value = [];
@@ -56,7 +57,8 @@ async function startSync() {
     status.value = success ? 'success' : 'error';
     if (error) {
       logs.value.push({ id: logIdCounter++, text: `失败: ${error}`, level: 'error' });
-    } else {
+    }
+    else {
       logs.value.push({ id: logIdCounter++, text: '── 同步完成 ✓', level: 'success' });
     }
     nextTick(() => {
@@ -78,7 +80,9 @@ function clearLogs() {
   <div class="sync-page">
     <!-- Config Section -->
     <section class="config-section">
-      <h2 class="section-title">⚙️ 配置</h2>
+      <h2 class="section-title">
+        ⚙️ 配置
+      </h2>
       <div class="field">
         <label>Obsidian Blog 目录</label>
         <div class="input-row">
@@ -86,8 +90,10 @@ function clearLogs() {
             v-model="config.obsidianBlogDir"
             placeholder="例如：D:\Obsidian\blog"
             @blur="saveConfig"
-          />
-          <button class="btn-browse" @click="browseDir('obsidianBlogDir')">浏览</button>
+          >
+          <button class="btn-browse" @click="browseDir('obsidianBlogDir')">
+            浏览
+          </button>
         </div>
       </div>
       <div class="field">
@@ -97,8 +103,10 @@ function clearLogs() {
             v-model="config.hexoBlogDir"
             placeholder="例如：D:\code\blog"
             @blur="saveConfig"
-          />
-          <button class="btn-browse" @click="browseDir('hexoBlogDir')">浏览</button>
+          >
+          <button class="btn-browse" @click="browseDir('hexoBlogDir')">
+            浏览
+          </button>
         </div>
       </div>
     </section>
@@ -111,12 +119,12 @@ function clearLogs() {
         :disabled="syncing || !config.obsidianBlogDir || !config.hexoBlogDir"
         @click="startSync"
       >
-        <span v-if="syncing" class="spinner"></span>
+        <span v-if="syncing" class="spinner" />
         <span>{{ syncing ? '同步中...' : '一键同步并发布' }}</span>
       </button>
 
       <div class="status-badge" :class="status">
-        <span class="dot"></span>
+        <span class="dot" />
         <span>{{ { idle: 'Idle', syncing: 'Syncing', success: 'Success', error: 'Error' }[status] }}</span>
       </div>
     </section>
@@ -124,8 +132,12 @@ function clearLogs() {
     <!-- Log Section -->
     <section class="log-section">
       <div class="log-header">
-        <h2 class="section-title">📋 日志</h2>
-        <button class="btn-clear" @click="clearLogs">清空</button>
+        <h2 class="section-title">
+          📋 日志
+        </h2>
+        <button class="btn-clear" @click="clearLogs">
+          清空
+        </button>
       </div>
       <div ref="logContainer" class="log-container">
         <div
@@ -133,8 +145,12 @@ function clearLogs() {
           :key="line.id"
           class="log-line"
           :class="line.level"
-        >{{ line.text }}</div>
-        <div v-if="logs.length === 0" class="log-empty">暂无日志，点击「一键同步并发布」开始</div>
+        >
+          {{ line.text }}
+        </div>
+        <div v-if="logs.length === 0" class="log-empty">
+          暂无日志，点击「一键同步并发布」开始
+        </div>
       </div>
     </section>
   </div>

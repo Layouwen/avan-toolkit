@@ -1,6 +1,6 @@
-import { app } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { app } from 'electron';
 
 export interface AppConfig {
   obsidianBlogDir: string;
@@ -18,7 +18,8 @@ export async function getConfig(): Promise<AppConfig> {
   try {
     const raw = await fs.readFile(CONFIG_FILE, 'utf-8');
     return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
-  } catch {
+  }
+  catch {
     return { ...DEFAULT_CONFIG };
   }
 }

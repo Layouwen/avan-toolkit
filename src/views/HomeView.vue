@@ -8,6 +8,8 @@ const appStore = useAppStore();
   <div>
     <h1>Home</h1>
     is loading: {{ appStore.loading }}
-    <button @click="appStore.setLoading(!appStore.loading)">Toggle Loading</button>
+    <button @click="appStore.setLoading(!appStore.loading)">
+      Toggle Loading
+    </button>
   </div>
 </template>

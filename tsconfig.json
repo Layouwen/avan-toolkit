@@ -1,14 +1,21 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "commonjs",
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "noImplicitAny": true,
     "sourceMap": true,
     "outDir": "dist",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true
-  }
+    "resolveJsonModule": true,
+    "composite": true
+  },
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.main.json"
+    },
+    {
+      "path": "./tsconfig.renderer.json"
+    }
+  ],
 }

@@ -1,7 +1,9 @@
+import type { Buffer } from 'node:buffer';
+import type { AppConfig } from './configManager';
+import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
-import type { AppConfig } from './configManager';
+import process from 'node:process';
 
 export type LogLevel = 'info' | 'success' | 'error';
 export type LogCallback = (message: string, level: LogLevel) => void;
@@ -14,7 +16,8 @@ async function directoryExists(dirPath: string): Promise<boolean> {
   try {
     const stat = await fs.stat(dirPath);
     return stat.isDirectory();
-  } catch {
+  }
+  catch {
     return false;
   }
 }
@@ -29,14 +32,15 @@ async function copyMdFiles(srcDir: string, destDir: string, cb: LogCallback): Pr
   let entries: string[];
   try {
     entries = await fs.readdir(srcDir);
-  } catch {
+  }
+  catch {
     log(cb, `  目录不存在，跳过: ${srcDir}`, 'info');
     return 0;
   }
-  const mdFiles = entries.filter((f) => f.endsWith('.md'));
+  const mdFiles = entries.filter(f => f.endsWith('.md'));
   for (const file of mdFiles) {
     const destFile = stripLeadingIndex(file);
-    
+
     await fs.copyFile(path.join(srcDir, file), path.join(destDir, destFile));
     log(cb, `  已复制: ${destFile}`, 'info');
   }
@@ -60,22 +64,23 @@ function runCommand(
       data
         .toString()
         .split('\n')
-        .filter((l) => l.trim())
-        .forEach((line) => log(cb, line, 'info'));
+        .filter(l => l.trim())
+        .forEach(line => log(cb, line, 'info'));
     });
 
     proc.stderr.on('data', (data: Buffer) => {
       data
         .toString()
         .split('\n')
-        .filter((l) => l.trim())
-        .forEach((line) => log(cb, line, 'info'));
+        .filter(l => l.trim())
+        .forEach(line => log(cb, line, 'info'));
     });
 
     proc.on('close', (code) => {
       if (code === 0) {
         resolve();
-      } else {
+      }
+      else {
         reject(new Error(`命令退出码: ${code}`));
       }
     });
@@ -91,7 +96,8 @@ async function resolveHexoCommand(hexoBlogDir: string): Promise<{ cmd: string; a
   try {
     await fs.access(localHexo);
     return { cmd: localHexo, args: ['generate'] };
-  } catch {
+  }
+  catch {
     // fallback to npx
     return { cmd: 'npx', args: ['hexo', 'generate'] };
   }

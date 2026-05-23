@@ -6,7 +6,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 contextBridge.exposeInMainWorld('electronAPI', {
   getConfig: () => ipcRenderer.invoke('config:get'),
   setConfig: (config: { obsidianBlogDir: string; hexoBlogDir: string }) => {
-    ipcRenderer.invoke('config:set', config)
+    ipcRenderer.invoke('config:set', config);
   },
   selectDirectory: () => ipcRenderer.invoke('dialog:selectDir'),
   startSync: () => ipcRenderer.invoke('sync:start'),
