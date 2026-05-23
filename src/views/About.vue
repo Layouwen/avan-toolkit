@@ -7,33 +7,50 @@ const { t, locale } = useI18n();
 const links = computed(() => [
   {
     label: t('about.links.github'),
-    url: 'https://github.com/Layouwen',
-    display: 'github.com/Layouwen',
+    url: 'https://github.com/layouwen',
+    display: 'Avan',
+    action: 'open',
   },
   {
     label: t('about.links.blog'),
-    url: 'https://layouwen.com',
-    display: 'layouwen.com',
+    url: 'https://blog.4van.top',
+    display: 'Avan\'s Blog',
+    action: 'open',
   },
   {
     label: t('about.links.twitter'),
-    url: 'https://x.com/Layouwen',
-    display: 'x.com/Layouwen',
+    url: 'https://x.com/avancoding',
+    display: 'avancoding',
+    action: 'open',
   },
   {
     label: t('about.links.juejin'),
-    url: 'https://juejin.cn/user/Layouwen',
-    display: 'juejin.cn/user/Layouwen',
+    url: 'https://juejin.cn/user/1732486058213822',
+    display: 'Avan菜菜',
+    action: 'open',
   },
   {
     label: t('about.links.email'),
-    url: 'mailto:me@layouwen.com',
-    display: 'me@layouwen.com',
+    url: 'mailto:layouwen@gmail.com',
+    display: 'layouwen@gmail.com',
+    action: 'copy',
   },
 ]);
 
 function openLink(url: string) {
   window.electronAPI.openExternal(url);
+}
+
+async function handleLinkClick(link: { url: string; display: string; label: string; action: string }) {
+  if (link.action === 'copy') {
+    await navigator.clipboard.writeText(link.display);
+    // TODO: Replace with a custom toast notification
+    // eslint-disable-next-line no-alert
+    window.alert(`${link.label ?? ''}${link.label ? ' ' : ''}已复制`);
+    return;
+  }
+
+  openLink(link.url);
 }
 
 async function toggleLocale() {
@@ -61,7 +78,7 @@ async function toggleLocale() {
         v-for="link in links"
         :key="link.url"
         class="flex items-center gap-3 bg-[#252526] border border-[#333] rounded-lg px-4 py-3 text-[#aaa] hover:text-[#e0e0e0] hover:border-[#555] transition-colors text-left cursor-pointer"
-        @click="openLink(link.url)"
+        @click="handleLinkClick(link)"
       >
         <span class="text-sm font-medium min-w-20">{{ link.label }}</span>
         <span class="text-xs text-[#666]">{{ link.display }}</span>
