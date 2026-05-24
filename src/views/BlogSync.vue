@@ -11,7 +11,7 @@ interface LogLine {
   level: 'info' | 'success' | 'error';
 }
 
-const config = ref<AppConfig>({ obsidianBlogDir: '', hexoBlogDir: '' });
+const config = ref<AppConfig>({ obsidianBlogDir: '', hexoBlogDir: '', locale: '' });
 const logs = ref<LogLine[]>([]);
 const syncing = ref(false);
 const status = ref<'idle' | 'syncing' | 'success' | 'error'>('idle');

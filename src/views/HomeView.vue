@@ -1,7 +1,16 @@
 <script setup lang="ts">
+import {
+  darkTheme,
+  NButton,
+  NCard,
+  NConfigProvider,
+  NPageHeader,
+  NSpace,
+  NTag,
+} from 'naive-ui';
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const { t } = useI18n();
@@ -16,24 +25,55 @@ const tools = computed(() => [
 </script>
 
 <template>
-  <div class="p-6">
-    <h1 class="text-xl font-semibold text-[#e0e0e0] mb-6">
-      {{ t('home.title') }}
-    </h1>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div
-        v-for="tool in tools"
-        :key="tool.path"
-        class="bg-[#252526] border border-[#333] rounded-lg p-5 cursor-pointer hover:border-[#555] transition-colors"
-        @click="router.push(tool.path)"
-      >
-        <h2 class="text-[#e0e0e0] font-medium mb-1">
-          {{ tool.title }}
-        </h2>
-        <p class="text-[#888] text-sm">
-          {{ tool.description }}
-        </p>
-      </div>
-    </div>
-  </div>
+  <NConfigProvider :theme="darkTheme">
+    <main class="p-6">
+      <NSpace vertical :size="18">
+        <NPageHeader>
+          <template #title>
+            {{ t('home.title') }}
+          </template>
+          <template #subtitle>
+            Toolkit
+          </template>
+          <template #extra>
+            <NTag type="success" size="small" round>
+              Naive UI
+            </NTag>
+          </template>
+        </NPageHeader>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <NCard
+            v-for="tool in tools"
+            :key="tool.path"
+            embedded
+            hoverable
+            class="tool-card"
+            @click="router.push(tool.path)"
+          >
+            <NSpace vertical :size="12">
+              <div>
+                <h2 class="text-base font-medium text-[#f2f2f2] mb-1">
+                  {{ tool.title }}
+                </h2>
+                <p class="text-sm text-[#a8a8a8] leading-6">
+                  {{ tool.description }}
+                </p>
+              </div>
+
+              <NButton type="primary" secondary size="small">
+                Open
+              </NButton>
+            </NSpace>
+          </NCard>
+        </div>
+      </NSpace>
+    </main>
+  </NConfigProvider>
 </template>
+
+<style scoped>
+.tool-card {
+  cursor: pointer;
+}
+</style>
