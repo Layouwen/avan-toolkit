@@ -1,4 +1,5 @@
 import type { Buffer } from 'node:buffer';
+import type { Dirent } from 'node:fs';
 import type { AppConfig } from './configManager';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
@@ -31,36 +32,42 @@ function stripLeadingIndex(filename: string): string {
 
 async function copyMdFiles(srcDir: string, destDir: string, cb: LogCallback): Promise<number> {
   await fs.mkdir(destDir, { recursive: true });
-  let entries: string[];
+  let entries: Dirent[];
   try {
-    entries = await fs.readdir(srcDir);
+    entries = await fs.readdir(srcDir, { withFileTypes: true });
   }
   catch {
     log(cb, `  目录不存在，跳过: ${srcDir}`, 'info');
     return 0;
   }
-  const mdFiles = entries.filter(f => f.endsWith('.md'));
-  for (const file of mdFiles) {
-    const destFile = stripLeadingIndex(file);
-    const srcPath = path.join(srcDir, file);
-    const destPath = path.join(destDir, destFile);
-
-    const raw = await fs.readFile(srcPath, 'utf8');
-
-    let finalContent = raw;
-
-    const parsed = matter(raw);
-    if (!parsed.data.uuid) {
-      parsed.data.uuid = uuidv4();
-      finalContent = matter.stringify(parsed.content, parsed.data);
-      await fs.writeFile(srcPath, finalContent, 'utf8');
-      log(cb, `  已生成 uuid: ${destFile}`, 'info');
+  let count = 0;
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      const subDest = path.join(destDir, entry.name);
+      count += await copyMdFiles(path.join(srcDir, entry.name), subDest, cb);
     }
+    else if (entry.name.endsWith('.md')) {
+      const destFile = stripLeadingIndex(entry.name);
+      const srcPath = path.join(srcDir, entry.name);
+      const destPath = path.join(destDir, destFile);
 
-    await fs.writeFile(destPath, finalContent, 'utf8');
-    log(cb, `  已复制: ${destFile}`, 'info');
+      const raw = await fs.readFile(srcPath, 'utf8');
+      let finalContent = raw;
+
+      const parsed = matter(raw);
+      if (!parsed.data.uuid) {
+        parsed.data.uuid = uuidv4();
+        finalContent = matter.stringify(parsed.content, parsed.data);
+        await fs.writeFile(srcPath, finalContent, 'utf8');
+        log(cb, `  已生成 uuid: ${destFile}`, 'info');
+      }
+
+      await fs.writeFile(destPath, finalContent, 'utf8');
+      log(cb, `  已复制: ${destFile}`, 'info');
+      count++;
+    }
   }
-  return mdFiles.length;
+  return count;
 }
 
 function runCommand(
