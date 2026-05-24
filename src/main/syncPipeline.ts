@@ -46,16 +46,17 @@ async function copyMdFiles(srcDir: string, destDir: string, cb: LogCallback): Pr
     const destPath = path.join(destDir, destFile);
 
     const raw = await fs.readFile(srcPath, 'utf8');
-    const parsed = matter(raw);
 
+    let finalContent = raw;
+
+    const parsed = matter(raw);
     if (!parsed.data.uuid) {
       parsed.data.uuid = uuidv4();
-      const updated = matter.stringify(parsed.content, parsed.data);
-      await fs.writeFile(srcPath, updated, 'utf8');
+      finalContent = matter.stringify(parsed.content, parsed.data);
+      await fs.writeFile(srcPath, finalContent, 'utf8');
       log(cb, `  已生成 uuid: ${destFile}`, 'info');
     }
 
-    const finalContent = matter.stringify(parsed.content, parsed.data);
     await fs.writeFile(destPath, finalContent, 'utf8');
     log(cb, `  已复制: ${destFile}`, 'info');
   }
