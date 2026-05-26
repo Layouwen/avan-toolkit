@@ -1,8 +1,16 @@
 <script setup lang="ts">
+import {
+  NButton,
+  NCard,
+  NSpace,
+  NText,
+  useMessage,
+} from 'naive-ui';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 const { t, locale } = useI18n();
+const message = useMessage();
 
 const links = computed(() => [
   {
@@ -44,9 +52,7 @@ function openLink(url: string) {
 async function handleLinkClick(link: { url: string; display: string; label: string; action: string }) {
   if (link.action === 'copy') {
     await navigator.clipboard.writeText(link.display);
-    // TODO: Replace with a custom toast notification
-    // eslint-disable-next-line no-alert
-    window.alert(`${link.label ?? ''}${link.label ? ' ' : ''}已复制`);
+    message.success(`${link.label ?? ''}${link.label ? ' ' : ''}已复制`);
     return;
   }
 
@@ -61,28 +67,40 @@ async function toggleLocale() {
 </script>
 
 <template>
-  <div class="p-6">
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-xl font-semibold text-[#e0e0e0]">
-        {{ t('about.title') }}
-      </h1>
-      <button
-        class="bg-[#252526] border border-[#333] rounded-md px-3 py-1 text-xs text-[#aaa] hover:text-[#e0e0e0] hover:border-[#555] transition-colors cursor-pointer"
-        @click="toggleLocale"
-      >
-        {{ t('about.language') }}
-      </button>
-    </div>
-    <div class="flex flex-col gap-3 max-w-md">
-      <button
-        v-for="link in links"
-        :key="link.url"
-        class="flex items-center gap-3 bg-[#252526] border border-[#333] rounded-lg px-4 py-3 text-[#aaa] hover:text-[#e0e0e0] hover:border-[#555] transition-colors text-left cursor-pointer"
-        @click="handleLinkClick(link)"
-      >
-        <span class="text-sm font-medium min-w-20">{{ link.label }}</span>
-        <span class="text-xs text-[#666]">{{ link.display }}</span>
-      </button>
-    </div>
-  </div>
+  <main class="min-h-full p-6">
+    <NCard :title="t('about.title')" embedded>
+      <template #header-extra>
+        <NButton tertiary size="small" @click="toggleLocale">
+          {{ t('about.language') }}
+        </NButton>
+      </template>
+
+      <NSpace vertical :size="12" class="max-w-xl">
+        <NCard
+          v-for="link in links"
+          :key="link.url"
+          size="small"
+          hoverable
+          embedded
+          class="link-card"
+          @click="handleLinkClick(link)"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <NText depth="2">
+              {{ link.label }}
+            </NText>
+            <NText depth="3" class="text-xs">
+              {{ link.display }}
+            </NText>
+          </div>
+        </NCard>
+      </NSpace>
+    </NCard>
+  </main>
 </template>
+
+<style scoped>
+.link-card {
+  cursor: pointer;
+}
+</style>

@@ -57,6 +57,13 @@ export default {
     },
   },
   agentPage: {
+    title: 'Agent 最小演示区',
+    inputPlaceholder: '请输入你的问题...',
+    send: '发送',
+    outputTitle: '输出区',
+    waiting: '等待输入...',
+    stepTitle: '实现步骤',
+    demoTitle: '能力演示',
     steps: {
       config: '配置 OpenAI API Key 与模型参数',
       singleTurn: '实现一次输入 -> 一次输出的最小对话循环',
@@ -72,4 +79,4 @@ export default {
       tracing: '可视化执行轨迹与日志',
     },
   },
-}
+};

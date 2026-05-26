@@ -1,8 +1,34 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import {
+  darkTheme,
+  NConfigProvider,
+  NLayoutHeader,
+  NMenu,
+  NMessageProvider,
+  NSpace,
+} from 'naive-ui';
+import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 
 const { t, locale } = useI18n();
+const route = useRoute();
+const router = useRouter();
+
+const menuOptions = computed(() => [
+  { label: t('nav.home'), key: '/' },
+  { label: t('nav.blogSync'), key: '/sync' },
+  { label: t('nav.agent'), key: '/agent' },
+  { label: t('nav.about'), key: '/about' },
+]);
+
+const activeMenuKey = computed(() => route.path);
+
+function handleNavigate(key: string) {
+  if (key !== route.path) {
+    router.push(key);
+  }
+}
 
 onMounted(async () => {
   const config = await window.electronAPI.getConfig();
@@ -13,24 +39,30 @@ onMounted(async () => {
 </script>
 
 <template>
-  <nav class="flex items-center gap-3 px-4 py-2 bg-[#1e1e1e] border-b border-[#333] text-sm">
-    <router-link to="/" class="text-[#aaa] hover:text-[#e0e0e0] transition-colors">
-      {{ t('nav.home') }}
-    </router-link>
-    <span class="text-[#444]">|</span>
-    <router-link to="/sync" class="text-[#aaa] hover:text-[#e0e0e0] transition-colors">
-      {{ t('nav.blogSync') }}
-    </router-link>
-    <span class="text-[#444]">|</span>
-    <router-link to="/agent" class="text-[#aaa] hover:text-[#e0e0e0] transition-colors">
-      {{ t('nav.agent') }}
-    </router-link>
-    <span class="text-[#444]">|</span>
-    <router-link to="/about" class="text-[#aaa] hover:text-[#e0e0e0] transition-colors">
-      {{ t('nav.about') }}
-    </router-link>
-  </nav>
-  <div class="h-full">
-    <router-view />
-  </div>
+  <NConfigProvider :theme="darkTheme">
+    <NMessageProvider>
+      <div class="h-screen flex flex-col">
+        <NLayoutHeader bordered class="shrink-0">
+          <NSpace class="px-4 py-2" align="center" justify="space-between">
+            <div class="text-sm font-medium text-[#e5e7eb]">
+              Avan Toolkit
+            </div>
+            <NMenu
+              mode="horizontal"
+              responsive
+              :value="activeMenuKey"
+              :options="menuOptions"
+              @update:value="handleNavigate"
+            />
+          </NSpace>
+        </NLayoutHeader>
+
+        <main class="flex-1 min-h-0 overflow-auto bg-[#111827]">
+          <div class="min-h-full h-full">
+            <router-view />
+          </div>
+        </main>
+      </div>
+    </NMessageProvider>
+  </NConfigProvider>
 </template>

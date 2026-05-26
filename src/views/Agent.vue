@@ -1,27 +1,80 @@
 <script setup lang="ts">
+import {
+  NButton,
+  NCard,
+  NInput,
+  NList,
+  NListItem,
+  NSpace,
+  NTag,
+  NThing,
+} from 'naive-ui';
+import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
+
+const prompt = ref('');
+
+const stepItems = computed(() => [
+  t('agentPage.steps.config'),
+  t('agentPage.steps.singleTurn'),
+  t('agentPage.steps.history'),
+  t('agentPage.steps.rawPayload'),
+]);
+
+const demoItems = computed(() => [
+  t('agentPage.demos.promptTemplate'),
+  t('agentPage.demos.toolCalling'),
+  t('agentPage.demos.rag'),
+  t('agentPage.demos.memory'),
+  t('agentPage.demos.multiAgent'),
+  t('agentPage.demos.tracing'),
+]);
 </script>
 
 <template>
-  <main class="agent-demo-page h-full flex flex-col items-center justify-center p-6">
-    <section class="w-full max-w-xl bg-[#181f2b] border border-[#2f3848] rounded-2xl shadow-lg p-8 flex flex-col gap-6">
-      <div>
-        <h1 class="text-2xl font-bold text-[#eaf0fb] mb-2">
-          Agent 最小演示区
-        </h1>
-        <p class="text-[#aeb8c8] text-sm mb-4">
-          你可以直接在下方粘贴和运行你的 Agent 代码，建议结构：输入框、输出区、发送按钮。后续如需多 Demo 或控制台，可再扩展。
-        </p>
+  <main class="agent-demo-page min-h-full p-6">
+    <NSpace vertical :size="16" class="mx-auto max-w-4xl">
+      <NCard :title="t('agentPage.title')" embedded>
+        <NSpace vertical>
+          <NInput
+            v-model:value="prompt"
+            type="textarea"
+            :rows="3"
+            :placeholder="t('agentPage.inputPlaceholder')"
+          />
+          <NSpace justify="end">
+            <NButton type="primary" :disabled="!prompt.trim()">
+              {{ t('agentPage.send') }}
+            </NButton>
+          </NSpace>
+          <NCard size="small" :title="t('agentPage.outputTitle')" embedded>
+            <span class="text-[#94a3b8]">{{ t('agentPage.waiting') }}</span>
+          </NCard>
+        </NSpace>
+      </NCard>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <NCard :title="t('agentPage.stepTitle')" embedded>
+          <NList bordered>
+            <NListItem v-for="item in stepItems" :key="item">
+              <NThing>
+                {{ item }}
+              </NThing>
+            </NListItem>
+          </NList>
+        </NCard>
+
+        <NCard :title="t('agentPage.demoTitle')" embedded>
+          <NSpace>
+            <NTag v-for="item in demoItems" :key="item" type="info" round>
+              {{ item }}
+            </NTag>
+          </NSpace>
+        </NCard>
       </div>
-      <div class="flex flex-col gap-3">
-        <input class="bg-[#232b3a] border border-[#344258] rounded-md px-3 py-2 text-[#eaf0fb] text-sm outline-none focus:border-[#5a9fd4] transition-colors" placeholder="请输入你的问题...">
-        <button class="bg-[#2d6a4f] hover:bg-[#3a8a65] text-white font-semibold rounded-md px-4 py-2 transition-colors">
-          发送
-        </button>
-        <div class="bg-[#202736] border border-[#344258] rounded-md min-h-[60px] px-3 py-2 text-[#b8c5d8] text-sm mt-2">
-          输出区
-        </div>
-      </div>
-    </section>
+    </NSpace>
   </main>
 </template>
 

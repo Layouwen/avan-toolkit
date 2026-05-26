@@ -57,6 +57,13 @@ export default {
     },
   },
   agentPage: {
+    title: 'Agent Minimal Demo',
+    inputPlaceholder: 'Enter your question...',
+    send: 'Send',
+    outputTitle: 'Output',
+    waiting: 'Waiting for input...',
+    stepTitle: 'Implementation Steps',
+    demoTitle: 'Capability Demos',
     steps: {
       config: 'Configure OpenAI API key and model parameters',
       singleTurn: 'Implement the minimum single input -> single output loop',
@@ -72,4 +79,4 @@ export default {
       tracing: 'Visual execution traces and logs',
     },
   },
-}
+};
