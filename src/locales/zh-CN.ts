@@ -2,6 +2,7 @@ export default {
   nav: {
     home: 'Home',
     blogSync: '博客同步',
+    agent: 'Agent 实验室',
     about: '关于',
   },
   home: {
@@ -10,6 +11,10 @@ export default {
       blogSync: {
         title: '博客同步',
         description: '将 Obsidian 笔记同步到 Hexo 博客并自动部署',
+      },
+      agent: {
+        title: 'Agent 实验室',
+        description: '用于 AI Agent 开发、调试与功能演示的工作台',
       },
     },
   },
@@ -49,6 +54,22 @@ export default {
       twitter: 'Twitter / X',
       juejin: '掘金',
       email: '邮箱',
+    },
+  },
+  agentPage: {
+    steps: {
+      config: '配置 OpenAI API Key 与模型参数',
+      singleTurn: '实现一次输入 -> 一次输出的最小对话循环',
+      history: '预留消息历史区，便于后续多轮扩展',
+      rawPayload: '在页面展示原始请求/响应用于调试',
+    },
+    demos: {
+      promptTemplate: 'Prompt 模板与变量注入',
+      toolCalling: '工具调用（Tool Calling）流程',
+      rag: 'RAG 检索问答链路',
+      memory: 'Agent Memory 会话记忆',
+      multiAgent: '多 Agent 协作编排',
+      tracing: '可视化执行轨迹与日志',
     },
   },
 }

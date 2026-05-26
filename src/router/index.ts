@@ -15,6 +15,10 @@ const router = createRouter({
       path: '/sync',
       component: () => import('../views/BlogSync.vue'),
     },
+    {
+      path: '/agent',
+      component: () => import('../views/Agent.vue'),
+    },
   ],
 });
 

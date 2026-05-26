@@ -21,6 +21,11 @@ const tools = computed(() => [
     description: t('home.tools.blogSync.description'),
     path: '/sync',
   },
+  {
+    title: t('home.tools.agent.title'),
+    description: t('home.tools.agent.description'),
+    path: '/agent',
+  },
 ]);
 </script>
 

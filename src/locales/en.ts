@@ -2,6 +2,7 @@ export default {
   nav: {
     home: 'Home',
     blogSync: 'Blog Sync',
+    agent: 'Agent Lab',
     about: 'About',
   },
   home: {
@@ -10,6 +11,10 @@ export default {
       blogSync: {
         title: 'Blog Sync',
         description: 'Sync Obsidian notes to Hexo blog and auto-deploy',
+      },
+      agent: {
+        title: 'Agent Lab',
+        description: 'A workspace for AI agent development, debugging, and demos',
       },
     },
   },
@@ -49,6 +54,22 @@ export default {
       twitter: 'Twitter / X',
       juejin: 'Juejin',
       email: 'Email',
+    },
+  },
+  agentPage: {
+    steps: {
+      config: 'Configure OpenAI API key and model parameters',
+      singleTurn: 'Implement the minimum single input -> single output loop',
+      history: 'Reserve a message history area for multi-turn extension',
+      rawPayload: 'Show raw request/response payloads for debugging',
+    },
+    demos: {
+      promptTemplate: 'Prompt templates and variable injection',
+      toolCalling: 'Tool calling workflow',
+      rag: 'RAG retrieval QA pipeline',
+      memory: 'Agent memory for session context',
+      multiAgent: 'Multi-agent orchestration',
+      tracing: 'Visual execution traces and logs',
     },
   },
 }

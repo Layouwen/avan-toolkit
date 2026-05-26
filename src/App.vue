@@ -22,6 +22,10 @@ onMounted(async () => {
       {{ t('nav.blogSync') }}
     </router-link>
     <span class="text-[#444]">|</span>
+    <router-link to="/agent" class="text-[#aaa] hover:text-[#e0e0e0] transition-colors">
+      {{ t('nav.agent') }}
+    </router-link>
+    <span class="text-[#444]">|</span>
     <router-link to="/about" class="text-[#aaa] hover:text-[#e0e0e0] transition-colors">
       {{ t('nav.about') }}
     </router-link>
