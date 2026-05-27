@@ -4,6 +4,20 @@ export interface AppConfig {
   obsidianBlogDir: string;
   hexoBlogDir: string;
   locale: string;
+  agent: AgentConfig;
+}
+
+export interface AgentConfig {
+  baseURL: string;
+  model: string;
+  apiKey: string;
+}
+
+export interface AgentResult {
+  answer: string;
+  model: string;
+  baseURL: string;
+  trace: string[];
 }
 
 export interface ElectronAPI {
@@ -15,6 +29,7 @@ export interface ElectronAPI {
   offSyncLog: () => void;
   onSyncDone: (cb: (success: boolean, error?: string) => void) => void;
   openExternal: (url: string) => Promise<void>;
+  recommendActivity: (prompt: string, config: AgentConfig) => Promise<AgentResult>;
 }
 
 declare global {

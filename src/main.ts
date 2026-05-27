@@ -2,8 +2,15 @@ import path from 'node:path';
 import process from 'node:process';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import started from 'electron-squirrel-startup';
+import { runAgentRecommendation } from './main/agentDemo';
 import { getConfig, setConfig } from './main/configManager';
 import { runSyncPipeline } from './main/syncPipeline';
+
+interface AgentInvokeConfig {
+  baseURL: string;
+  model: string;
+  apiKey: string;
+}
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -90,4 +97,16 @@ ipcMain.handle('sync:start', async () => {
     mainWindow?.webContents.send('sync:log', `错误: ${message}`, 'error');
     mainWindow?.webContents.send('sync:done', false, message);
   }
+});
+
+ipcMain.handle('agent:recommendActivity', async (_event, userInput: string, config: AgentInvokeConfig) => {
+  const text = userInput.trim();
+  if (!text) {
+    throw new Error('Prompt cannot be empty.');
+  }
+  if (!config || !config.baseURL || !config.model || !config.apiKey) {
+    throw new Error('Agent config baseURL/model/apiKey is required.');
+  }
+
+  return runAgentRecommendation(text, config);
 });

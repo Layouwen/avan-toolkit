@@ -21,7 +21,16 @@ interface LogLine {
   level: 'info' | 'success' | 'error';
 }
 
-const config = ref<AppConfig>({ obsidianBlogDir: '', hexoBlogDir: '', locale: '' });
+const config = ref<AppConfig>({
+  obsidianBlogDir: '',
+  hexoBlogDir: '',
+  locale: '',
+  agent: {
+    baseURL: '',
+    model: '',
+    apiKey: '',
+  },
+});
 const logs = ref<LogLine[]>([]);
 const syncing = ref(false);
 const status = ref<'idle' | 'syncing' | 'success' | 'error'>('idle');
@@ -44,7 +53,9 @@ onUnmounted(() => {
   window.electronAPI.offSyncLog();
 });
 
-async function browseDir(field: keyof AppConfig) {
+type BlogPathField = 'obsidianBlogDir' | 'hexoBlogDir';
+
+async function browseDir(field: BlogPathField) {
   const dir = await window.electronAPI.selectDirectory();
   if (dir) {
     config.value[field] = dir;
