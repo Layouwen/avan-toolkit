@@ -19,6 +19,10 @@ export default {
     },
   },
   blogSync: {
+    tabs: {
+      sync: '同步',
+      blogs: '博客管理',
+    },
     config: {
       title: '⚙️ 配置',
       obsidianBlogDir: 'Obsidian Blog 目录',
@@ -30,6 +34,29 @@ export default {
     action: {
       sync: '一键同步并发布',
       syncing: '同步中...',
+    },
+    blogs: {
+      title: 'Obsidian 博客',
+      refresh: '刷新',
+      add: '新增',
+      remove: '删除',
+      expandAll: '全部展开',
+      collapseAll: '全部收起',
+      sortByName: '名称',
+      sortByTime: '更新时间',
+      sortAsc: '升序',
+      sortDesc: '降序',
+      tagSearchPlaceholder: '按标签搜索',
+      newTitlePlaceholder: '新博客标题',
+      directoryPlaceholder: '目录，例如 article',
+      tagsPlaceholder: '标签，空格分隔',
+      categoriesPlaceholder: '分类，例如 tech/frontend',
+      empty: 'Obsidian Blog 目录中暂无 Markdown 博客。',
+      noTagMatches: '没有匹配所选标签的博客。',
+      loading: '正在加载博客...',
+      removePrompt: '确定从 Obsidian 删除「{title}」吗？',
+      confirmRemove: '删除',
+      cancelRemove: '取消',
     },
     status: {
       idle: 'Idle',

@@ -14,9 +14,19 @@ interface PreloadConfig {
   };
 }
 
+interface CreateObsidianBlogPayload {
+  title: string;
+  directory?: string;
+  tags?: string[];
+  categories?: string[];
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   getConfig: () => ipcRenderer.invoke('config:get'),
   setConfig: (config: PreloadConfig) => ipcRenderer.invoke('config:set', config),
+  listObsidianBlogs: () => ipcRenderer.invoke('blogs:list'),
+  createObsidianBlog: (payload: CreateObsidianBlogPayload) => ipcRenderer.invoke('blogs:create', payload),
+  deleteObsidianBlog: (relativePath: string) => ipcRenderer.invoke('blogs:delete', relativePath),
   selectDirectory: () => ipcRenderer.invoke('dialog:selectDir'),
   startSync: () => ipcRenderer.invoke('sync:start'),
   onSyncLog: (cb: (message: string, level: string) => void) => {

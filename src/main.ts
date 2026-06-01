@@ -1,8 +1,10 @@
+import type { CreateObsidianBlogPayload } from './main/blogManager';
 import path from 'node:path';
 import process from 'node:process';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import started from 'electron-squirrel-startup';
 import { runAgentRecommendation } from './main/agentDemo';
+import { createObsidianBlog, deleteObsidianBlog, listObsidianBlogs } from './main/blogManager';
 import { getConfig, setConfig } from './main/configManager';
 import { runSyncPipeline } from './main/syncPipeline';
 
@@ -74,6 +76,21 @@ ipcMain.handle('shell:openExternal', (_event, url: string) => shell.openExternal
 ipcMain.handle('config:get', () => getConfig());
 
 ipcMain.handle('config:set', (_event, config) => setConfig(config));
+
+ipcMain.handle('blogs:list', async () => {
+  const config = await getConfig();
+  return listObsidianBlogs(config);
+});
+
+ipcMain.handle('blogs:create', async (_event, payload: CreateObsidianBlogPayload) => {
+  const config = await getConfig();
+  return createObsidianBlog(config, payload);
+});
+
+ipcMain.handle('blogs:delete', async (_event, relativePath: string) => {
+  const config = await getConfig();
+  await deleteObsidianBlog(config, relativePath);
+});
 
 ipcMain.handle('dialog:selectDir', async () => {
   if (!mainWindow)

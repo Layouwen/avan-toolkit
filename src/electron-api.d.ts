@@ -20,9 +20,31 @@ export interface AgentResult {
   trace: string[];
 }
 
+export interface ObsidianBlog {
+  id: string;
+  title: string;
+  fileName: string;
+  directory: string;
+  relativePath: string;
+  absolutePath: string;
+  updatedAt: string;
+  tags: string[];
+  categories: string[];
+}
+
+export interface CreateObsidianBlogPayload {
+  title: string;
+  directory?: string;
+  tags?: string[];
+  categories?: string[];
+}
+
 export interface ElectronAPI {
   getConfig: () => Promise<AppConfig>;
   setConfig: (config: AppConfig) => Promise<void>;
+  listObsidianBlogs: () => Promise<ObsidianBlog[]>;
+  createObsidianBlog: (payload: CreateObsidianBlogPayload) => Promise<ObsidianBlog>;
+  deleteObsidianBlog: (relativePath: string) => Promise<void>;
   selectDirectory: () => Promise<string | null>;
   startSync: () => Promise<void>;
   onSyncLog: (cb: (message: string, level: 'info' | 'success' | 'error') => void) => void;

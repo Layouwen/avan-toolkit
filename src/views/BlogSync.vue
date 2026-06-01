@@ -1,16 +1,25 @@
 <script setup lang="ts">
-import type { AppConfig } from '../electron-api.d';
+import type { TreeOption } from 'naive-ui';
+import type { AppConfig, ObsidianBlog } from '../electron-api.d';
 import {
+  NAlert,
+  NAutoComplete,
   NButton,
   NCard,
+  NEmpty,
   NForm,
   NFormItem,
   NInput,
+  NPopconfirm,
+  NSelect,
   NSpace,
+  NTabPane,
+  NTabs,
   NTag,
   NThing,
+  NTree,
 } from 'naive-ui';
-import { nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { computed, h, nextTick, onMounted, onUnmounted, ref, toRaw } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
@@ -20,6 +29,17 @@ interface LogLine {
   text: string;
   level: 'info' | 'success' | 'error';
 }
+
+type BlogTreeNode = TreeOption & {
+  key: string;
+  label: string;
+  kind: 'folder' | 'blog';
+  blog?: ObsidianBlog;
+  children?: BlogTreeNode[];
+};
+
+type BlogSortBy = 'name' | 'updatedAt';
+type SortOrder = 'asc' | 'desc';
 
 const config = ref<AppConfig>({
   obsidianBlogDir: '',
@@ -32,13 +52,208 @@ const config = ref<AppConfig>({
   },
 });
 const logs = ref<LogLine[]>([]);
+const blogs = ref<ObsidianBlog[]>([]);
 const syncing = ref(false);
+const loadingBlogs = ref(false);
+const creatingBlog = ref(false);
+const deletingBlogId = ref('');
+const blogError = ref('');
 const status = ref<'idle' | 'syncing' | 'success' | 'error'>('idle');
 const logContainer = ref<HTMLElement | null>(null);
+const newBlogTitle = ref('');
+const newBlogDirectory = ref('');
+const newBlogTags = ref<string[]>([]);
+const tagInputValue = ref('');
+const newBlogCategories = ref('');
+const expandedBlogKeys = ref<Array<string | number>>([]);
+const blogSortBy = ref<BlogSortBy>('updatedAt');
+const blogSortOrder = ref<SortOrder>('desc');
+const selectedTagFilters = ref<string[]>([]);
 let logIdCounter = 0;
+
+const directoryOptions = computed(() => {
+  const keyword = newBlogDirectory.value.trim().toLowerCase();
+  const directories = Array.from(new Set(
+    blogs.value
+      .map(blog => blog.directory)
+      .filter(Boolean),
+  )).sort((a, b) => a.localeCompare(b));
+
+  return directories
+    .filter(directory => !keyword || directory.toLowerCase().includes(keyword))
+    .map(directory => ({
+      label: directory,
+      value: directory,
+    }));
+});
+
+const categoryOptions = computed(() => {
+  const keyword = newBlogCategories.value.trim().toLowerCase();
+  const categoryPaths = Array.from(new Set([
+    ...blogs.value.map(blog => blog.directory).filter(Boolean),
+    ...blogs.value
+      .map(blog => blog.categories.join('/'))
+      .filter(Boolean),
+  ])).sort((a, b) => a.localeCompare(b));
+
+  return categoryPaths
+    .filter(category => !keyword || category.toLowerCase().includes(keyword))
+    .map(category => ({
+      label: category,
+      value: category,
+    }));
+});
+
+const sortByOptions = computed(() => [
+  { label: t('blogSync.blogs.sortByTime'), value: 'updatedAt' },
+  { label: t('blogSync.blogs.sortByName'), value: 'name' },
+]);
+
+const sortOrderOptions = computed(() => [
+  { label: t('blogSync.blogs.sortDesc'), value: 'desc' },
+  { label: t('blogSync.blogs.sortAsc'), value: 'asc' },
+]);
+
+const tagFilterOptions = computed(() => Array.from(new Set(
+  blogs.value.flatMap(blog => blog.tags),
+))
+  .sort((a, b) => a.localeCompare(b))
+  .map(tag => ({
+    label: tag,
+    value: tag,
+  })));
+
+const tagFilterSelectStyle = computed(() => {
+  const labels = selectedTagFilters.value.length > 0
+    ? selectedTagFilters.value
+    : [t('blogSync.blogs.tagSearchPlaceholder')];
+  const contentWidth = labels.reduce((width, label) => width + label.length * 8 + 42, 48);
+  return {
+    width: `${Math.min(Math.max(contentWidth, 220), 560)}px`,
+    maxWidth: '100%',
+  };
+});
+
+const filteredBlogs = computed(() => {
+  if (selectedTagFilters.value.length === 0) {
+    return blogs.value;
+  }
+
+  return blogs.value.filter(blog =>
+    selectedTagFilters.value.every(tag => blog.tags.includes(tag)),
+  );
+});
+
+const sortedBlogs = computed(() => {
+  const direction = blogSortOrder.value === 'asc' ? 1 : -1;
+  return [...filteredBlogs.value].sort((a, b) => {
+    if (blogSortBy.value === 'name') {
+      return direction * a.title.localeCompare(b.title);
+    }
+    return direction * a.updatedAt.localeCompare(b.updatedAt);
+  });
+});
+
+const blogTreeData = computed<BlogTreeNode[]>(() => {
+  const roots: BlogTreeNode[] = [];
+  const folderMap = new Map<string, BlogTreeNode>();
+
+  function getFolder(pathParts: string[]): BlogTreeNode[] {
+    let siblings = roots;
+    let currentPath = '';
+
+    for (const part of pathParts) {
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+      let folder = folderMap.get(currentPath);
+      if (!folder) {
+        folder = {
+          key: `dir:${currentPath}`,
+          label: part,
+          kind: 'folder',
+          children: [],
+        };
+        folderMap.set(currentPath, folder);
+        siblings.push(folder);
+      }
+      siblings = folder.children || [];
+    }
+
+    return siblings;
+  }
+
+  for (const blog of sortedBlogs.value) {
+    const directoryParts = blog.directory ? blog.directory.split('/').filter(Boolean) : [];
+    const siblings = getFolder(directoryParts);
+    siblings.push({
+      key: `blog:${blog.relativePath}`,
+      label: blog.title,
+      kind: 'blog',
+      blog,
+      isLeaf: true,
+    });
+  }
+
+  function sortNodes(nodes: BlogTreeNode[]) {
+    nodes.sort((a, b) => {
+      if (a.kind !== b.kind) {
+        return a.kind === 'folder' ? -1 : 1;
+      }
+      if (a.kind === 'blog' && b.kind === 'blog') {
+        const aBlog = a.blog;
+        const bBlog = b.blog;
+        if (aBlog && bBlog && blogSortBy.value === 'updatedAt') {
+          const direction = blogSortOrder.value === 'asc' ? 1 : -1;
+          return direction * aBlog.updatedAt.localeCompare(bBlog.updatedAt);
+        }
+        if (blogSortBy.value === 'name') {
+          const direction = blogSortOrder.value === 'asc' ? 1 : -1;
+          return direction * a.label.localeCompare(b.label);
+        }
+      }
+      return a.label.localeCompare(b.label);
+    });
+    for (const node of nodes) {
+      if (node.children) {
+        sortNodes(node.children);
+      }
+    }
+  }
+
+  sortNodes(roots);
+  return roots;
+});
+
+const allFolderKeys = computed(() => {
+  const keys: Array<string | number> = [];
+
+  function collect(nodes: BlogTreeNode[]) {
+    for (const node of nodes) {
+      if (node.kind === 'folder') {
+        keys.push(node.key);
+      }
+      if (node.children) {
+        collect(node.children);
+      }
+    }
+  }
+
+  collect(blogTreeData.value);
+  return keys;
+});
+
+function plainConfig(): AppConfig {
+  const current = toRaw(config.value);
+  return {
+    ...current,
+    agent: {
+      ...toRaw(current.agent),
+    },
+  };
+}
 
 onMounted(async () => {
   config.value = await window.electronAPI.getConfig();
+  await loadBlogs();
   window.electronAPI.onSyncLog((message, level) => {
     logs.value.push({ id: logIdCounter++, text: message, level: level as LogLine['level'] });
     nextTick(() => {
@@ -59,12 +274,231 @@ async function browseDir(field: BlogPathField) {
   const dir = await window.electronAPI.selectDirectory();
   if (dir) {
     config.value[field] = dir;
-    await window.electronAPI.setConfig({ ...config.value });
+    await window.electronAPI.setConfig(plainConfig());
+    if (field === 'obsidianBlogDir') {
+      await loadBlogs();
+    }
   }
 }
 
 async function saveConfig() {
-  await window.electronAPI.setConfig({ ...config.value });
+  await window.electronAPI.setConfig(plainConfig());
+  await loadBlogs();
+}
+
+async function loadBlogs() {
+  blogError.value = '';
+  if (!config.value.obsidianBlogDir.trim()) {
+    blogs.value = [];
+    return;
+  }
+
+  loadingBlogs.value = true;
+  try {
+    await window.electronAPI.setConfig(plainConfig());
+    blogs.value = await window.electronAPI.listObsidianBlogs();
+    expandedBlogKeys.value = allFolderKeys.value;
+  }
+  catch (error) {
+    blogs.value = [];
+    blogError.value = error instanceof Error ? error.message : String(error);
+  }
+  finally {
+    loadingBlogs.value = false;
+  }
+}
+
+async function addBlog() {
+  const title = newBlogTitle.value.trim();
+  if (!title || creatingBlog.value) {
+    return;
+  }
+
+  creatingBlog.value = true;
+  blogError.value = '';
+  try {
+    await window.electronAPI.setConfig(plainConfig());
+    await window.electronAPI.createObsidianBlog({
+      title,
+      directory: newBlogDirectory.value.trim(),
+      tags: [...newBlogTags.value],
+      categories: parseCategoryPath(newBlogCategories.value),
+    });
+    newBlogTitle.value = '';
+    newBlogTags.value = [];
+    tagInputValue.value = '';
+    newBlogCategories.value = '';
+    await loadBlogs();
+  }
+  catch (error) {
+    blogError.value = error instanceof Error ? error.message : String(error);
+  }
+  finally {
+    creatingBlog.value = false;
+  }
+}
+
+async function removeBlog(blog: ObsidianBlog) {
+  deletingBlogId.value = blog.id;
+  blogError.value = '';
+  try {
+    await window.electronAPI.deleteObsidianBlog(blog.relativePath);
+    blogs.value = blogs.value.filter(item => item.id !== blog.id);
+  }
+  catch (error) {
+    blogError.value = error instanceof Error ? error.message : String(error);
+  }
+  finally {
+    deletingBlogId.value = '';
+  }
+}
+
+function formatUpdatedAt(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
+function showDirectoryOptions() {
+  return directoryOptions.value.length > 0;
+}
+
+function showCategoryOptions() {
+  return categoryOptions.value.length > 0;
+}
+
+function parseCategoryPath(value: string) {
+  return value
+    .split('/')
+    .map(category => category.trim())
+    .filter(Boolean);
+}
+
+function expandAllBlogFolders() {
+  expandedBlogKeys.value = allFolderKeys.value;
+}
+
+function collapseAllBlogFolders() {
+  expandedBlogKeys.value = [];
+}
+
+function addTag(value = tagInputValue.value) {
+  const tags = value
+    .split(/\s+/)
+    .map(tag => tag.trim())
+    .filter(Boolean);
+  if (tags.length === 0) {
+    tagInputValue.value = '';
+    return;
+  }
+
+  const nextTags = [...newBlogTags.value];
+  for (const tag of tags) {
+    if (!nextTags.includes(tag)) {
+      nextTags.push(tag);
+    }
+  }
+  newBlogTags.value = nextTags;
+  tagInputValue.value = '';
+}
+
+function removeTag(index: number) {
+  newBlogTags.value = newBlogTags.value.filter((_, tagIndex) => tagIndex !== index);
+}
+
+function handleTagInputUpdate(value: string) {
+  if (/\s/.test(value)) {
+    addTag(value);
+    return;
+  }
+  tagInputValue.value = value;
+}
+
+function handleTagInputKeydown(event: KeyboardEvent) {
+  if (event.key === ' ' || event.key === 'Enter') {
+    event.preventDefault();
+    addTag();
+    return;
+  }
+
+  if (event.key === 'Backspace' && !tagInputValue.value && newBlogTags.value.length > 0) {
+    newBlogTags.value = newBlogTags.value.slice(0, -1);
+  }
+}
+
+function renderBlogTreeLabel({ option }: { option: TreeOption }) {
+  const node = option as BlogTreeNode;
+  if (node.kind === 'folder') {
+    const count = countBlogs(node);
+    return h('span', { class: 'font-medium text-[#d8dee9]' }, `${node.label} (${count})`);
+  }
+
+  const blog = node.blog;
+  const tagNodes = blog && blog.tags.length > 0
+    ? h(
+        'div',
+        { class: 'mt-1 flex flex-wrap gap-1' },
+        blog.tags.map(tag => h(
+          NTag,
+          {
+            key: tag,
+            size: 'small',
+            type: 'info',
+            round: true,
+          },
+          { default: () => tag },
+        )),
+      )
+    : null;
+
+  return h('div', { class: 'min-w-0 py-1' }, [
+    h('div', { class: 'truncate text-[#e5e7eb]' }, node.label),
+    blog
+      ? h('div', { class: 'text-xs text-[#94a3b8] break-all' }, `${blog.relativePath} · ${formatUpdatedAt(blog.updatedAt)}`)
+      : null,
+    tagNodes,
+  ]);
+}
+
+function renderBlogTreeSuffix({ option }: { option: TreeOption }) {
+  const node = option as BlogTreeNode;
+  const blog = node.blog;
+  if (!blog) {
+    return null;
+  }
+
+  return h(
+    NPopconfirm,
+    {
+      positiveText: t('blogSync.blogs.confirmRemove'),
+      negativeText: t('blogSync.blogs.cancelRemove'),
+      onPositiveClick: () => removeBlog(blog),
+    },
+    {
+      trigger: () => h(
+        NButton,
+        {
+          size: 'small',
+          type: 'error',
+          tertiary: true,
+          loading: deletingBlogId.value === blog.id,
+          onClick: (event: MouseEvent) => event.stopPropagation(),
+        },
+        { default: () => t('blogSync.blogs.remove') },
+      ),
+      default: () => t('blogSync.blogs.removePrompt', { title: blog.title }),
+    },
+  );
+}
+
+function countBlogs(node: BlogTreeNode): number {
+  if (node.kind === 'blog') {
+    return 1;
+  }
+  return (node.children || []).reduce((count, child) => count + countBlogs(child), 0);
 }
 
 async function startSync() {
@@ -74,7 +508,7 @@ async function startSync() {
   status.value = 'syncing';
   logs.value = [];
 
-  await window.electronAPI.setConfig({ ...config.value });
+  await window.electronAPI.setConfig(plainConfig());
 
   window.electronAPI.onSyncDone((success, error) => {
     syncing.value = false;
@@ -101,89 +535,282 @@ function clearLogs() {
 </script>
 
 <template>
-  <main class="flex flex-col gap-5 p-6 min-h-full">
-    <NCard :title="t('blogSync.config.title')" embedded>
-      <NForm label-placement="top">
-        <NFormItem :label="t('blogSync.config.obsidianBlogDir')">
-          <NSpace class="w-full" :wrap="false">
-            <NInput
-              v-model:value="config.obsidianBlogDir"
-              :placeholder="t('blogSync.config.obsidianPlaceholder')"
-              @blur="saveConfig"
-            />
-            <NButton @click="browseDir('obsidianBlogDir')">
-              {{ t('blogSync.config.browse') }}
-            </NButton>
-          </NSpace>
-        </NFormItem>
+  <main class="p-6 min-h-full">
+    <NTabs type="line" animated>
+      <NTabPane name="sync" :tab="t('blogSync.tabs.sync')">
+        <div class="flex flex-col gap-5">
+          <NCard :title="t('blogSync.config.title')" embedded>
+            <NForm label-placement="top">
+              <NFormItem :label="t('blogSync.config.obsidianBlogDir')">
+                <div class="flex w-full items-center gap-2">
+                  <NInput
+                    v-model:value="config.obsidianBlogDir"
+                    class="min-w-0 flex-1"
+                    :placeholder="t('blogSync.config.obsidianPlaceholder')"
+                    @blur="saveConfig"
+                  />
+                  <NButton @click="browseDir('obsidianBlogDir')">
+                    {{ t('blogSync.config.browse') }}
+                  </NButton>
+                </div>
+              </NFormItem>
 
-        <NFormItem :label="t('blogSync.config.hexoBlogDir')">
-          <NSpace class="w-full" :wrap="false">
-            <NInput
-              v-model:value="config.hexoBlogDir"
-              :placeholder="t('blogSync.config.hexoPlaceholder')"
-              @blur="saveConfig"
-            />
-            <NButton @click="browseDir('hexoBlogDir')">
-              {{ t('blogSync.config.browse') }}
-            </NButton>
-          </NSpace>
-        </NFormItem>
-      </NForm>
-    </NCard>
+              <NFormItem :label="t('blogSync.config.hexoBlogDir')">
+                <div class="flex w-full items-center gap-2">
+                  <NInput
+                    v-model:value="config.hexoBlogDir"
+                    class="min-w-0 flex-1"
+                    :placeholder="t('blogSync.config.hexoPlaceholder')"
+                    @blur="saveConfig"
+                  />
+                  <NButton @click="browseDir('hexoBlogDir')">
+                    {{ t('blogSync.config.browse') }}
+                  </NButton>
+                </div>
+              </NFormItem>
+            </NForm>
+          </NCard>
 
-    <NCard embedded>
-      <NSpace align="center" justify="space-between">
-        <NSpace align="center">
-          <NButton
-            type="primary"
-            :loading="syncing"
-            :disabled="syncing || !config.obsidianBlogDir || !config.hexoBlogDir"
-            @click="startSync"
-          >
-            {{ syncing ? t('blogSync.action.syncing') : t('blogSync.action.sync') }}
-          </NButton>
-          <NTag
-            :type="status === 'success' ? 'success' : status === 'error' ? 'error' : status === 'syncing' ? 'warning' : 'default'"
-            round
-          >
-            {{ t(`blogSync.status.${status}`) }}
-          </NTag>
-        </NSpace>
-      </NSpace>
-    </NCard>
+          <NCard embedded>
+            <NSpace align="center" justify="space-between">
+              <NSpace align="center">
+                <NButton
+                  type="primary"
+                  :loading="syncing"
+                  :disabled="syncing || !config.obsidianBlogDir || !config.hexoBlogDir"
+                  @click="startSync"
+                >
+                  {{ syncing ? t('blogSync.action.syncing') : t('blogSync.action.sync') }}
+                </NButton>
+                <NTag
+                  :type="status === 'success' ? 'success' : status === 'error' ? 'error' : status === 'syncing' ? 'warning' : 'default'"
+                  round
+                >
+                  {{ t(`blogSync.status.${status}`) }}
+                </NTag>
+              </NSpace>
+            </NSpace>
+          </NCard>
 
-    <NCard class="flex-1 min-h-0" embedded>
-      <template #header>
-        {{ t('blogSync.logs.title') }}
-      </template>
-      <template #header-extra>
-        <NButton tertiary size="small" @click="clearLogs">
-          {{ t('blogSync.logs.clear') }}
-        </NButton>
-      </template>
+          <NCard class="flex-1 min-h-0" embedded>
+            <template #header>
+              {{ t('blogSync.logs.title') }}
+            </template>
+            <template #header-extra>
+              <NButton tertiary size="small" @click="clearLogs">
+                {{ t('blogSync.logs.clear') }}
+              </NButton>
+            </template>
 
-      <div
-        ref="logContainer"
-        class="h-full overflow-y-auto rounded-md border border-[#2e3440] bg-[#141414] p-3 font-mono text-[12.5px] leading-relaxed"
-      >
-        <NThing
-          v-for="line in logs"
-          :key="line.id"
-          class="whitespace-pre-wrap break-all"
-          :class="{
-            'text-[#c9d1d9]': line.level === 'info',
-            'text-[#40c074]': line.level === 'success',
-            'text-[#e05252]': line.level === 'error',
-          }"
-        >
-          {{ line.text }}
-        </NThing>
+            <div
+              ref="logContainer"
+              class="h-[360px] overflow-y-auto rounded-md border border-[#2e3440] bg-[#141414] p-3 font-mono text-[12.5px] leading-relaxed"
+            >
+              <NThing
+                v-for="line in logs"
+                :key="line.id"
+                class="whitespace-pre-wrap break-all"
+                :class="{
+                  'text-[#c9d1d9]': line.level === 'info',
+                  'text-[#40c074]': line.level === 'success',
+                  'text-[#e05252]': line.level === 'error',
+                }"
+              >
+                {{ line.text }}
+              </NThing>
 
-        <div v-if="logs.length === 0" class="text-[#555] italic text-center mt-5">
-          {{ t('blogSync.logs.empty') }}
+              <div v-if="logs.length === 0" class="text-[#555] italic text-center mt-5">
+                {{ t('blogSync.logs.empty') }}
+              </div>
+            </div>
+          </NCard>
         </div>
-      </div>
-    </NCard>
+      </NTabPane>
+
+      <NTabPane name="blogs" :tab="t('blogSync.tabs.blogs')">
+        <NCard embedded>
+          <template #header>
+            {{ t('blogSync.blogs.title') }}
+          </template>
+          <template #header-extra>
+            <NButton size="small" tertiary :loading="loadingBlogs" @click="loadBlogs">
+              {{ t('blogSync.blogs.refresh') }}
+            </NButton>
+          </template>
+
+          <NSpace vertical :size="14">
+            <NAlert v-if="blogError" type="error" closable @close="blogError = ''">
+              {{ blogError }}
+            </NAlert>
+
+            <NSpace :wrap="false" class="w-full" align="center">
+              <NInput
+                v-model:value="newBlogTitle"
+                :placeholder="t('blogSync.blogs.newTitlePlaceholder')"
+                :disabled="!config.obsidianBlogDir || creatingBlog"
+                @keyup.enter="addBlog"
+              />
+              <NAutoComplete
+                v-model:value="newBlogDirectory"
+                class="w-[220px] shrink-0"
+                :options="directoryOptions"
+                :get-show="showDirectoryOptions"
+                :placeholder="t('blogSync.blogs.directoryPlaceholder')"
+                :disabled="!config.obsidianBlogDir || creatingBlog"
+                clearable
+                @keyup.enter="addBlog"
+              />
+              <div
+                class="tag-input-shell w-[260px] shrink-0"
+                :class="{ 'tag-input-shell--disabled': !config.obsidianBlogDir || creatingBlog }"
+              >
+                <NTag
+                  v-for="(tag, index) in newBlogTags"
+                  :key="tag"
+                  size="small"
+                  type="info"
+                  round
+                  closable
+                  :disabled="!config.obsidianBlogDir || creatingBlog"
+                  @close="removeTag(index)"
+                >
+                  {{ tag }}
+                </NTag>
+                <NInput
+                  :value="tagInputValue"
+                  class="tag-input-field"
+                  size="small"
+                  :placeholder="t('blogSync.blogs.tagsPlaceholder')"
+                  :disabled="!config.obsidianBlogDir || creatingBlog"
+                  :bordered="false"
+                  @update:value="handleTagInputUpdate"
+                  @keydown="handleTagInputKeydown"
+                  @blur="addTag()"
+                />
+              </div>
+              <NAutoComplete
+                v-model:value="newBlogCategories"
+                class="w-[240px] shrink-0"
+                :options="categoryOptions"
+                :get-show="showCategoryOptions"
+                :placeholder="t('blogSync.blogs.categoriesPlaceholder')"
+                :disabled="!config.obsidianBlogDir || creatingBlog"
+                clearable
+                @keyup.enter="addBlog"
+              />
+              <NButton
+                type="primary"
+                class="shrink-0"
+                :loading="creatingBlog"
+                :disabled="!config.obsidianBlogDir || !newBlogTitle.trim()"
+                @click="addBlog"
+              >
+                {{ t('blogSync.blogs.add') }}
+              </NButton>
+            </NSpace>
+
+            <template v-if="blogs.length > 0">
+              <NSpace :size="8" align="center">
+                <NSelect
+                  v-model:value="selectedTagFilters"
+                  class="tag-filter-select"
+                  :style="tagFilterSelectStyle"
+                  size="small"
+                  multiple
+                  filterable
+                  clearable
+                  :options="tagFilterOptions"
+                  :placeholder="t('blogSync.blogs.tagSearchPlaceholder')"
+                />
+                <NSelect
+                  v-model:value="blogSortBy"
+                  class="w-[150px]"
+                  size="small"
+                  :options="sortByOptions"
+                />
+                <NSelect
+                  v-model:value="blogSortOrder"
+                  class="w-[140px]"
+                  size="small"
+                  :options="sortOrderOptions"
+                />
+                <NButton size="small" tertiary @click="expandAllBlogFolders">
+                  {{ t('blogSync.blogs.expandAll') }}
+                </NButton>
+                <NButton size="small" tertiary @click="collapseAllBlogFolders">
+                  {{ t('blogSync.blogs.collapseAll') }}
+                </NButton>
+              </NSpace>
+
+              <NTree
+                v-if="sortedBlogs.length > 0"
+                v-model:expanded-keys="expandedBlogKeys"
+                :data="blogTreeData"
+                :render-label="renderBlogTreeLabel"
+                :render-suffix="renderBlogTreeSuffix"
+                block-line
+                expand-on-click
+              />
+              <NEmpty v-else :description="t('blogSync.blogs.noTagMatches')" />
+            </template>
+
+            <NEmpty v-else :description="loadingBlogs ? t('blogSync.blogs.loading') : t('blogSync.blogs.empty')" />
+          </NSpace>
+        </NCard>
+      </NTabPane>
+    </NTabs>
   </main>
 </template>
+
+<style scoped>
+.tag-input-shell {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 3px;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.2s var(--n-bezier), box-shadow 0.2s var(--n-bezier);
+}
+
+.tag-input-shell:focus-within {
+  border-color: #63e2b7;
+  box-shadow: 0 0 0 2px rgba(99, 226, 183, 0.2);
+}
+
+.tag-input-shell--disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.tag-input-field {
+  min-width: 72px;
+  flex: 1;
+}
+
+.tag-filter-select {
+  flex: 0 1 auto;
+}
+
+.tag-filter-select :deep(.n-base-selection-tags) {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.tag-filter-select :deep(.n-base-selection-tag-wrapper) {
+  max-width: 100%;
+}
+
+.tag-filter-select :deep(.n-tag) {
+  max-width: 100%;
+}
+
+.tag-filter-select :deep(.n-tag__content) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

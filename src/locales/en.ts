@@ -19,6 +19,10 @@ export default {
     },
   },
   blogSync: {
+    tabs: {
+      sync: 'Sync',
+      blogs: 'Blogs',
+    },
     config: {
       title: '⚙️ Config',
       obsidianBlogDir: 'Obsidian Blog Directory',
@@ -30,6 +34,29 @@ export default {
     action: {
       sync: 'Sync & Publish',
       syncing: 'Syncing...',
+    },
+    blogs: {
+      title: 'Obsidian Blogs',
+      refresh: 'Refresh',
+      add: 'Add',
+      remove: 'Remove',
+      expandAll: 'Expand all',
+      collapseAll: 'Collapse all',
+      sortByName: 'Name',
+      sortByTime: 'Updated time',
+      sortAsc: 'Ascending',
+      sortDesc: 'Descending',
+      tagSearchPlaceholder: 'Search by tag',
+      newTitlePlaceholder: 'New blog title',
+      directoryPlaceholder: 'Folder, e.g. article',
+      tagsPlaceholder: 'Tags separated by spaces',
+      categoriesPlaceholder: 'Categories, e.g. tech/frontend',
+      empty: 'No markdown blogs found in the Obsidian blog directory.',
+      noTagMatches: 'No blogs match the selected tags.',
+      loading: 'Loading blogs...',
+      removePrompt: 'Remove "{title}" from Obsidian?',
+      confirmRemove: 'Remove',
+      cancelRemove: 'Cancel',
     },
     status: {
       idle: 'Idle',
