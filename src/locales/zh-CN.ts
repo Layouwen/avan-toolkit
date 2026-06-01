@@ -58,6 +58,12 @@ export default {
       removePrompt: '确定从 Obsidian 删除「{title}」吗？',
       confirmRemove: '删除',
       cancelRemove: '取消',
+      renameTitle: '重命名标题',
+      renameFileName: '重命名文件名',
+      renameTitlePlaceholder: '博客标题',
+      renameFileNamePlaceholder: '文件名（无需 .md）',
+      renameConfirm: '确定',
+      renameCancel: '取消',
     },
     status: {
       idle: 'Idle',

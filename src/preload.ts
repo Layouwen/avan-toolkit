@@ -27,6 +27,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   listObsidianBlogs: () => ipcRenderer.invoke('blogs:list'),
   createObsidianBlog: (payload: CreateObsidianBlogPayload) => ipcRenderer.invoke('blogs:create', payload),
   deleteObsidianBlog: (relativePath: string) => ipcRenderer.invoke('blogs:delete', relativePath),
+  renameObsidianBlogTitle: (relativePath: string, title: string) =>
+    ipcRenderer.invoke('blogs:renameTitle', relativePath, title),
+  renameObsidianBlogFileName: (relativePath: string, fileName: string) =>
+    ipcRenderer.invoke('blogs:renameFileName', relativePath, fileName),
   selectDirectory: () => ipcRenderer.invoke('dialog:selectDir'),
   startSync: () => ipcRenderer.invoke('sync:start'),
   onSyncLog: (cb: (message: string, level: string) => void) => {

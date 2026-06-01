@@ -45,6 +45,8 @@ export interface ElectronAPI {
   listObsidianBlogs: () => Promise<ObsidianBlog[]>;
   createObsidianBlog: (payload: CreateObsidianBlogPayload) => Promise<ObsidianBlog>;
   deleteObsidianBlog: (relativePath: string) => Promise<void>;
+  renameObsidianBlogTitle: (relativePath: string, title: string) => Promise<ObsidianBlog>;
+  renameObsidianBlogFileName: (relativePath: string, fileName: string) => Promise<ObsidianBlog>;
   selectDirectory: () => Promise<string | null>;
   startSync: () => Promise<void>;
   onSyncLog: (cb: (message: string, level: 'info' | 'success' | 'error') => void) => void;

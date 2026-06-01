@@ -4,7 +4,13 @@ import process from 'node:process';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import started from 'electron-squirrel-startup';
 import { runAgentRecommendation } from './main/agentDemo';
-import { createObsidianBlog, deleteObsidianBlog, listObsidianBlogs } from './main/blogManager';
+import {
+  createObsidianBlog,
+  deleteObsidianBlog,
+  listObsidianBlogs,
+  renameObsidianBlogFileName,
+  renameObsidianBlogTitle,
+} from './main/blogManager';
 import { getConfig, setConfig } from './main/configManager';
 import { runSyncPipeline } from './main/syncPipeline';
 
@@ -90,6 +96,16 @@ ipcMain.handle('blogs:create', async (_event, payload: CreateObsidianBlogPayload
 ipcMain.handle('blogs:delete', async (_event, relativePath: string) => {
   const config = await getConfig();
   await deleteObsidianBlog(config, relativePath);
+});
+
+ipcMain.handle('blogs:renameTitle', async (_event, relativePath: string, title: string) => {
+  const config = await getConfig();
+  return renameObsidianBlogTitle(config, relativePath, title);
+});
+
+ipcMain.handle('blogs:renameFileName', async (_event, relativePath: string, fileName: string) => {
+  const config = await getConfig();
+  return renameObsidianBlogFileName(config, relativePath, fileName);
 });
 
 ipcMain.handle('dialog:selectDir', async () => {

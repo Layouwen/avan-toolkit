@@ -58,6 +58,12 @@ export default {
       removePrompt: 'Remove "{title}" from Obsidian?',
       confirmRemove: 'Remove',
       cancelRemove: 'Cancel',
+      renameTitle: 'Rename title',
+      renameFileName: 'Rename file name',
+      renameTitlePlaceholder: 'Blog title',
+      renameFileNamePlaceholder: 'File name (without .md)',
+      renameConfirm: 'Confirm',
+      renameCancel: 'Cancel',
     },
     status: {
       idle: 'Idle',

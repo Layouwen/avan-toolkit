@@ -6,10 +6,12 @@ import {
   NAutoComplete,
   NButton,
   NCard,
+  NDropdown,
   NEmpty,
   NForm,
   NFormItem,
   NInput,
+  NModal,
   NPopconfirm,
   NSelect,
   NSpace,
@@ -69,6 +71,14 @@ const expandedBlogKeys = ref<Array<string | number>>([]);
 const blogSortBy = ref<BlogSortBy>('updatedAt');
 const blogSortOrder = ref<SortOrder>('desc');
 const selectedTagFilters = ref<string[]>([]);
+const contextMenuShow = ref(false);
+const contextMenuX = ref(0);
+const contextMenuY = ref(0);
+const contextMenuBlog = ref<ObsidianBlog | null>(null);
+const renameModalShow = ref(false);
+const renameMode = ref<'title' | 'fileName'>('title');
+const renameValue = ref('');
+const renaming = ref(false);
 let logIdCounter = 0;
 
 const directoryOptions = computed(() => {
@@ -123,6 +133,11 @@ const tagFilterOptions = computed(() => Array.from(new Set(
     label: tag,
     value: tag,
   })));
+
+const blogContextMenuOptions = computed(() => [
+  { label: t('blogSync.blogs.renameTitle'), key: 'title' },
+  { label: t('blogSync.blogs.renameFileName'), key: 'fileName' },
+]);
 
 const tagFilterSelectStyle = computed(() => {
   const labels = selectedTagFilters.value.length > 0
@@ -506,7 +521,79 @@ function countBlogs(node: BlogTreeNode): number {
   if (node.kind === 'blog') {
     return 1;
   }
-  return (node.children || []).reduce((count, child) => count + countBlogs(child), 0);
+  return (node.children || []).reduce((count, child) => count + countBlogs(child as BlogTreeNode), 0);
+}
+
+function openBlogContextMenu(event: MouseEvent, blog: ObsidianBlog) {
+  event.preventDefault();
+  contextMenuBlog.value = blog;
+  contextMenuX.value = event.clientX;
+  contextMenuY.value = event.clientY;
+  contextMenuShow.value = true;
+}
+
+function handleBlogContextMenuSelect(key: string) {
+  contextMenuShow.value = false;
+  const blog = contextMenuBlog.value;
+  if (!blog) {
+    return;
+  }
+
+  if (key === 'title') {
+    renameMode.value = 'title';
+    renameValue.value = blog.title;
+  }
+  else if (key === 'fileName') {
+    renameMode.value = 'fileName';
+    renameValue.value = blog.fileName.replace(/\.md$/i, '');
+  }
+  else {
+    return;
+  }
+
+  renameModalShow.value = true;
+}
+
+function blogNodeProps({ option }: { option: TreeOption }) {
+  const node = option as BlogTreeNode;
+  if (node.kind !== 'blog' || !node.blog) {
+    return {};
+  }
+
+  return {
+    onContextmenu: (event: MouseEvent) => openBlogContextMenu(event, node.blog!),
+  };
+}
+
+async function confirmRename() {
+  const blog = contextMenuBlog.value;
+  const value = renameValue.value.trim();
+  if (!blog || !value || renaming.value) {
+    return false;
+  }
+
+  renaming.value = true;
+  blogError.value = '';
+  try {
+    await window.electronAPI.setConfig(plainConfig());
+    const updated = renameMode.value === 'title'
+      ? await window.electronAPI.renameObsidianBlogTitle(blog.relativePath, value)
+      : await window.electronAPI.renameObsidianBlogFileName(blog.relativePath, value);
+
+    blogs.value = blogs.value.map(item =>
+      item.relativePath === blog.relativePath ? updated : item,
+    );
+    contextMenuBlog.value = updated;
+    renameModalShow.value = false;
+    return true;
+  }
+  catch (error) {
+    blogError.value = error instanceof Error ? error.message : String(error);
+    return false;
+  }
+  finally {
+    renaming.value = false;
+  }
 }
 
 async function startSync() {
@@ -750,16 +837,45 @@ function clearLogs() {
                 </NButton>
               </NSpace>
 
+              <NDropdown
+                trigger="manual"
+                placement="bottom-start"
+                :show="contextMenuShow"
+                :x="contextMenuX"
+                :y="contextMenuY"
+                :options="blogContextMenuOptions"
+                @select="handleBlogContextMenuSelect"
+                @clickoutside="contextMenuShow = false"
+              />
               <NTree
                 v-if="sortedBlogs.length > 0"
                 v-model:expanded-keys="expandedBlogKeys"
                 :data="blogTreeData"
+                :node-props="blogNodeProps"
                 :render-label="renderBlogTreeLabel"
                 :render-suffix="renderBlogTreeSuffix"
                 block-line
                 expand-on-click
               />
               <NEmpty v-else :description="t('blogSync.blogs.noTagMatches')" />
+              <NModal
+                v-model:show="renameModalShow"
+                preset="dialog"
+                :title="renameMode === 'title' ? t('blogSync.blogs.renameTitle') : t('blogSync.blogs.renameFileName')"
+                :positive-text="t('blogSync.blogs.renameConfirm')"
+                :negative-text="t('blogSync.blogs.renameCancel')"
+                :loading="renaming"
+                :positive-button-props="{ disabled: !renameValue.trim() }"
+                @positive-click="confirmRename"
+              >
+                <NInput
+                  v-model:value="renameValue"
+                  :placeholder="renameMode === 'title'
+                    ? t('blogSync.blogs.renameTitlePlaceholder')
+                    : t('blogSync.blogs.renameFileNamePlaceholder')"
+                  @keyup.enter="confirmRename"
+                />
+              </NModal>
             </template>
 
             <NEmpty v-else :description="loadingBlogs ? t('blogSync.blogs.loading') : t('blogSync.blogs.empty')" />
