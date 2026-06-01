@@ -101,7 +101,7 @@ npm install
 ### 启动开发环境
 
 ```bash
-npm start
+npm dev
 ```
 
 ### 构建安装包

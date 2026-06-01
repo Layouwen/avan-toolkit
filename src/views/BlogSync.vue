@@ -38,7 +38,7 @@ type BlogTreeNode = TreeOption & {
   children?: BlogTreeNode[];
 };
 
-type BlogSortBy = 'name' | 'updatedAt';
+type BlogSortBy = 'fileName' | 'title' | 'updatedAt';
 type SortOrder = 'asc' | 'desc';
 
 const config = ref<AppConfig>({
@@ -106,7 +106,8 @@ const categoryOptions = computed(() => {
 
 const sortByOptions = computed(() => [
   { label: t('blogSync.blogs.sortByTime'), value: 'updatedAt' },
-  { label: t('blogSync.blogs.sortByName'), value: 'name' },
+  { label: t('blogSync.blogs.sortByFileName'), value: 'fileName' },
+  { label: t('blogSync.blogs.sortByTitle'), value: 'title' },
 ]);
 
 const sortOrderOptions = computed(() => [
@@ -147,7 +148,10 @@ const filteredBlogs = computed(() => {
 const sortedBlogs = computed(() => {
   const direction = blogSortOrder.value === 'asc' ? 1 : -1;
   return [...filteredBlogs.value].sort((a, b) => {
-    if (blogSortBy.value === 'name') {
+    if (blogSortBy.value === 'fileName') {
+      return direction * a.fileName.localeCompare(b.fileName);
+    }
+    if (blogSortBy.value === 'title') {
       return direction * a.title.localeCompare(b.title);
     }
     return direction * a.updatedAt.localeCompare(b.updatedAt);
@@ -205,7 +209,11 @@ const blogTreeData = computed<BlogTreeNode[]>(() => {
           const direction = blogSortOrder.value === 'asc' ? 1 : -1;
           return direction * aBlog.updatedAt.localeCompare(bBlog.updatedAt);
         }
-        if (blogSortBy.value === 'name') {
+        if (aBlog && bBlog && blogSortBy.value === 'fileName') {
+          const direction = blogSortOrder.value === 'asc' ? 1 : -1;
+          return direction * aBlog.fileName.localeCompare(bBlog.fileName);
+        }
+        if (blogSortBy.value === 'title') {
           const direction = blogSortOrder.value === 'asc' ? 1 : -1;
           return direction * a.label.localeCompare(b.label);
         }
@@ -773,7 +781,9 @@ function clearLogs() {
   border-radius: 3px;
   padding: 2px 6px;
   background: rgba(255, 255, 255, 0.02);
-  transition: border-color 0.2s var(--n-bezier), box-shadow 0.2s var(--n-bezier);
+  transition:
+    border-color 0.2s var(--n-bezier),
+    box-shadow 0.2s var(--n-bezier);
 }
 
 .tag-input-shell:focus-within {

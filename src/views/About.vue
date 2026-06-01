@@ -82,7 +82,7 @@ async function toggleLocale() {
           size="small"
           hoverable
           embedded
-          class="link-card"
+          class="link-card cursor-pointer"
           @click="handleLinkClick(link)"
         >
           <div class="flex items-center justify-between gap-3">
@@ -100,7 +100,4 @@ async function toggleLocale() {
 </template>
 
 <style scoped>
-.link-card {
-  cursor: pointer;
-}
 </style>
