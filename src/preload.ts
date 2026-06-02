@@ -12,6 +12,12 @@ interface PreloadConfig {
     model: string;
     apiKey: string;
   };
+  qzone: {
+    loginMode: 'credentials' | 'qr';
+    qqNumber: string;
+    qqPassword: string;
+    playwrightProfileDir: string;
+  };
 }
 
 interface CreateObsidianBlogPayload {
@@ -44,4 +50,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   recommendActivity: (prompt: string, config: PreloadConfig['agent']) => ipcRenderer.invoke('agent:recommendActivity', prompt, config),
+  testQzoneLogin: () => ipcRenderer.invoke('qzone:testLogin'),
+  publishQzoneShuoshuo: (content: string) => ipcRenderer.invoke('qzone:publishShuoshuo', content),
+  listQzoneShuoshuo: () => ipcRenderer.invoke('qzone:listShuoshuo'),
 });

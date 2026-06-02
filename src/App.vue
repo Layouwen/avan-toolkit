@@ -18,6 +18,7 @@ const router = useRouter();
 const menuOptions = computed(() => [
   { label: t('nav.home'), key: '/' },
   { label: t('nav.blogSync'), key: '/sync' },
+  { label: t('nav.qzone'), key: '/qzone' },
   { label: t('nav.agent'), key: '/agent' },
   { label: t('nav.about'), key: '/about' },
 ]);

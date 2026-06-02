@@ -52,6 +52,12 @@ const config = ref<AppConfig>({
     model: '',
     apiKey: '',
   },
+  qzone: {
+    loginMode: 'qr',
+    qqNumber: '',
+    qqPassword: '',
+    playwrightProfileDir: '',
+  },
 });
 const logs = ref<LogLine[]>([]);
 const blogs = ref<ObsidianBlog[]>([]);

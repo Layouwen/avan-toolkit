@@ -24,6 +24,11 @@ const tools = computed(() => [
     description: t('home.tools.agent.description'),
     path: '/agent',
   },
+  {
+    title: t('home.tools.qzone.title'),
+    description: t('home.tools.qzone.description'),
+    path: '/qzone',
+  },
 ]);
 </script>
 

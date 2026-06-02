@@ -5,6 +5,7 @@ export interface AppConfig {
   hexoBlogDir: string;
   locale: string;
   agent: AgentConfig;
+  qzone: QzoneConfig;
 }
 
 export interface AgentConfig {
@@ -18,6 +19,30 @@ export interface AgentResult {
   model: string;
   baseURL: string;
   trace: string[];
+}
+
+export interface QzoneConfig {
+  loginMode: 'credentials' | 'qr';
+  qqNumber: string;
+  qqPassword: string;
+  playwrightProfileDir: string;
+}
+
+export interface QzoneAutomationResult {
+  success: boolean;
+  message: string;
+  steps: string[];
+}
+
+export interface QzoneListItem {
+  id: string;
+  text: string;
+  source: string;
+  images: string[];
+}
+
+export interface QzoneListResult extends QzoneAutomationResult {
+  items: QzoneListItem[];
 }
 
 export interface ObsidianBlog {
@@ -54,6 +79,9 @@ export interface ElectronAPI {
   onSyncDone: (cb: (success: boolean, error?: string) => void) => void;
   openExternal: (url: string) => Promise<void>;
   recommendActivity: (prompt: string, config: AgentConfig) => Promise<AgentResult>;
+  testQzoneLogin: () => Promise<QzoneAutomationResult>;
+  publishQzoneShuoshuo: (content: string) => Promise<QzoneAutomationResult>;
+  listQzoneShuoshuo: () => Promise<QzoneListResult>;
 }
 
 declare global {

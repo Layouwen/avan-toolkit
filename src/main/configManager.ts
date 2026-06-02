@@ -11,9 +11,16 @@ export interface AppConfig {
     model: string;
     apiKey: string;
   };
+  qzone: {
+    loginMode: 'credentials' | 'qr';
+    qqNumber: string;
+    qqPassword: string;
+    playwrightProfileDir: string;
+  };
 }
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
+const DEFAULT_QZONE_PROFILE_DIR = path.join(app.getPath('userData'), 'qzone-playwright-profile');
 
 const DEFAULT_CONFIG: AppConfig = {
   obsidianBlogDir: '',
@@ -25,12 +32,30 @@ const DEFAULT_CONFIG: AppConfig = {
     // model: 'qwen3.5:27b', // 消耗 20g 内存
     apiKey: 'ollama',
   },
+  qzone: {
+    loginMode: 'qr',
+    qqNumber: '',
+    qqPassword: '',
+    playwrightProfileDir: DEFAULT_QZONE_PROFILE_DIR,
+  },
 };
 
 export async function getConfig(): Promise<AppConfig> {
   try {
     const raw = await fs.readFile(CONFIG_FILE, 'utf-8');
-    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw) as Partial<AppConfig>;
+    return {
+      ...DEFAULT_CONFIG,
+      ...parsed,
+      agent: {
+        ...DEFAULT_CONFIG.agent,
+        ...parsed.agent,
+      },
+      qzone: {
+        ...DEFAULT_CONFIG.qzone,
+        ...parsed.qzone,
+      },
+    };
   }
   catch {
     return { ...DEFAULT_CONFIG };

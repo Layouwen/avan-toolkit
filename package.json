@@ -16,7 +16,8 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
-    "lint": "eslint --ext .ts,.tsx ."
+    "lint": "eslint --ext .ts,.tsx .",
+    "install:playwright": "playwright install chromium"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
@@ -25,6 +26,7 @@
     "naive-ui": "^2.44.1",
     "openai": "^6.39.0",
     "pinia": "^3.0.4",
+    "playwright": "^1.60.0",
     "uuid": "^14.0.0",
     "vue": "^3.5.34",
     "vue-i18n": "^11.4.4",
@@ -49,7 +51,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-format": "^2.0.1",
     "tailwindcss": "^4.3.0",
-    "typescript": "~4.5.4",
+    "typescript": "^5.9.3",
     "vite": "^5.4.21"
   }
 }

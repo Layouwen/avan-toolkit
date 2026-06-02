@@ -12,6 +12,7 @@ import {
   renameObsidianBlogTitle,
 } from './main/blogManager';
 import { getConfig, setConfig } from './main/configManager';
+import { listQzoneShuoshuo, publishQzoneShuoshuo, testQzoneLogin } from './main/qzoneAutomation';
 import { runSyncPipeline } from './main/syncPipeline';
 
 interface AgentInvokeConfig {
@@ -142,4 +143,19 @@ ipcMain.handle('agent:recommendActivity', async (_event, userInput: string, conf
   }
 
   return runAgentRecommendation(text, config);
+});
+
+ipcMain.handle('qzone:testLogin', async () => {
+  const config = await getConfig();
+  return testQzoneLogin(config.qzone);
+});
+
+ipcMain.handle('qzone:publishShuoshuo', async (_event, content: string) => {
+  const config = await getConfig();
+  return publishQzoneShuoshuo(config.qzone, content);
+});
+
+ipcMain.handle('qzone:listShuoshuo', async () => {
+  const config = await getConfig();
+  return listQzoneShuoshuo(config.qzone);
 });
