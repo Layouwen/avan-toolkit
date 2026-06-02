@@ -12,13 +12,17 @@ import {
   renameObsidianBlogTitle,
 } from './main/blogManager';
 import { getConfig, setConfig } from './main/configManager';
-import { listQzoneShuoshuo, publishQzoneShuoshuo, testQzoneLogin } from './main/qzoneAutomation';
+import { closeQzoneSession, listQzoneShuoshuo, loadMoreQzoneShuoshuo, publishQzoneShuoshuo, testQzoneLogin } from './main/qzoneAutomation';
 import { runSyncPipeline } from './main/syncPipeline';
 
 interface AgentInvokeConfig {
   baseURL: string;
   model: string;
   apiKey: string;
+}
+
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -72,6 +76,10 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+app.on('before-quit', () => {
+  void closeQzoneSession();
 });
 
 // In this file you can include the rest of your app's specific main process
@@ -156,6 +164,32 @@ ipcMain.handle('qzone:publishShuoshuo', async (_event, content: string) => {
 });
 
 ipcMain.handle('qzone:listShuoshuo', async () => {
-  const config = await getConfig();
-  return listQzoneShuoshuo(config.qzone);
+  try {
+    const config = await getConfig();
+    return await listQzoneShuoshuo(config.qzone);
+  }
+  catch (error) {
+    return {
+      success: false,
+      message: toErrorMessage(error),
+      steps: [`执行失败: ${toErrorMessage(error)}`],
+      items: [],
+      hasMore: false,
+    };
+  }
+});
+
+ipcMain.handle('qzone:loadMoreShuoshuo', async () => {
+  try {
+    return await loadMoreQzoneShuoshuo();
+  }
+  catch (error) {
+    return {
+      success: false,
+      message: toErrorMessage(error),
+      steps: [`执行失败: ${toErrorMessage(error)}`],
+      items: [],
+      hasMore: false,
+    };
+  }
 });

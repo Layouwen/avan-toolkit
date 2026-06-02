@@ -43,6 +43,7 @@ export interface QzoneListItem {
 
 export interface QzoneListResult extends QzoneAutomationResult {
   items: QzoneListItem[];
+  hasMore: boolean;
 }
 
 export interface ObsidianBlog {
@@ -82,6 +83,7 @@ export interface ElectronAPI {
   testQzoneLogin: () => Promise<QzoneAutomationResult>;
   publishQzoneShuoshuo: (content: string) => Promise<QzoneAutomationResult>;
   listQzoneShuoshuo: () => Promise<QzoneListResult>;
+  loadMoreQzoneShuoshuo: () => Promise<QzoneListResult>;
 }
 
 declare global {

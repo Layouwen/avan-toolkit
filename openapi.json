@@ -1,0 +1,491 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Qzone Friend Feed API",
+    "description": "QQ 空间扫码登录后，通过浏览器登录态中的 cookie、p_skey/skey 计算 g_tk，调用好友动态分页接口。导入 Apifox 后，请手动填入当前登录态 Cookie 和 g_tk。",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://user.qzone.qq.com",
+      "description": "Qzone user domain"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Qzone Feed",
+      "description": "好友动态列表"
+    }
+  ],
+  "paths": {
+    "/proxy/domain/ic2.qzone.qq.com/cgi-bin/feeds/feeds3_html_more": {
+      "get": {
+        "tags": [
+          "Qzone Feed"
+        ],
+        "summary": "加载好友动态列表",
+        "description": "获取 QQ 空间好友动态。首次请求可使用 pagenum=1、begintime=0、externparam 为空；后续加载更多时使用上一页响应 data.main 中返回的 pagenum、begintime、externparam、dayspac。\n\n固定值参数已设置 default/example；通常只需要替换 Cookie、uin、Referer、g_tk、rd、usertime、windowId。",
+        "operationId": "getQzoneFriendFeedsMore",
+        "parameters": [
+          {
+            "name": "Cookie",
+            "in": "header",
+            "required": true,
+            "description": "扫码登录后的完整 Cookie header，至少需要包含 p_skey 或 skey。不要提交到仓库。",
+            "schema": {
+              "type": "string",
+              "example": "uin=o3415301508; p_uin=o3415301508; p_skey=YOUR_P_SKEY; skey=YOUR_SKEY"
+            }
+          },
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+            }
+          },
+          {
+            "name": "Referer",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "https://user.qzone.qq.com/3415301508/infocenter"
+            }
+          },
+          {
+            "name": "uin",
+            "in": "query",
+            "required": true,
+            "description": "当前登录 QQ 号。",
+            "schema": {
+              "type": "string",
+              "example": "3415301508"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "0",
+              "example": "0"
+            }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "example": "1"
+            }
+          },
+          {
+            "name": "daylist",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "example": ""
+            }
+          },
+          {
+            "name": "uinlist",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "example": ""
+            }
+          },
+          {
+            "name": "gid",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "example": ""
+            }
+          },
+          {
+            "name": "flag",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "example": "1"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "all",
+              "example": "all"
+            }
+          },
+          {
+            "name": "applist",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "all",
+              "example": "all"
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "0",
+              "example": "0"
+            }
+          },
+          {
+            "name": "aisortEndTime",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "0",
+              "example": "0"
+            }
+          },
+          {
+            "name": "aisortOffset",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "0",
+              "example": "0"
+            }
+          },
+          {
+            "name": "getAisort",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "0",
+              "example": "0"
+            }
+          },
+          {
+            "name": "aisortBeginTime",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "0",
+              "example": "0"
+            }
+          },
+          {
+            "name": "pagenum",
+            "in": "query",
+            "required": true,
+            "description": "页码。首次请求传 1；加载更多使用上一页 data.main.pagenum。",
+            "schema": {
+              "type": "string",
+              "example": "1",
+              "default": "1"
+            }
+          },
+          {
+            "name": "externparam",
+            "in": "query",
+            "required": false,
+            "description": "分页上下文。首次请求可为空；加载更多使用上一页 data.main.externparam。",
+            "schema": {
+              "type": "string",
+              "example": "",
+              "default": ""
+            }
+          },
+          {
+            "name": "firstGetGroup",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "0",
+              "example": "0"
+            }
+          },
+          {
+            "name": "icServerTime",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "0",
+              "example": "0"
+            }
+          },
+          {
+            "name": "mixnocache",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "0",
+              "example": "0"
+            }
+          },
+          {
+            "name": "scene",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "0",
+              "example": "0"
+            }
+          },
+          {
+            "name": "begintime",
+            "in": "query",
+            "required": true,
+            "description": "首次请求传 0；加载更多使用上一页 data.main.begintime。",
+            "schema": {
+              "type": "string",
+              "example": "0",
+              "default": "0"
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "10",
+              "example": "10"
+            }
+          },
+          {
+            "name": "dayspac",
+            "in": "query",
+            "required": true,
+            "description": "首次请求传 0；加载更多使用上一页 data.main.dayspac。",
+            "schema": {
+              "type": "string",
+              "example": "0",
+              "default": "0"
+            }
+          },
+          {
+            "name": "sidomain",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "qzonestyle.gtimg.cn",
+              "example": "qzonestyle.gtimg.cn"
+            }
+          },
+          {
+            "name": "useutf8",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "example": "1"
+            }
+          },
+          {
+            "name": "outputhtmlfeed",
+            "in": "query",
+            "required": true,
+            "description": "必须为 1，响应 data.data[].html 才包含可解析 feed HTML。",
+            "schema": {
+              "type": "string",
+              "default": "1",
+              "example": "1"
+            }
+          },
+          {
+            "name": "rd",
+            "in": "query",
+            "required": true,
+            "description": "随机数，用于避免缓存。",
+            "schema": {
+              "type": "string",
+              "example": "0.5577472972290776"
+            }
+          },
+          {
+            "name": "usertime",
+            "in": "query",
+            "required": true,
+            "description": "当前时间戳，毫秒。",
+            "schema": {
+              "type": "string",
+              "example": "1780412898663"
+            }
+          },
+          {
+            "name": "windowId",
+            "in": "query",
+            "required": true,
+            "description": "随机窗口 ID。",
+            "schema": {
+              "type": "string",
+              "example": "0.6924103759933827"
+            }
+          },
+          {
+            "name": "g_tk",
+            "in": "query",
+            "required": true,
+            "description": "由 p_skey 优先、否则 skey 计算得到。此接口实际请求中可出现两次 g_tk；Apifox 调试通常填一次即可，不行再手动追加一个同名参数。",
+            "schema": {
+              "type": "string",
+              "example": "913970842"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Qzone JSONP/JS object response，外层为 _Callback(...)，不是严格 JSON。",
+            "content": {
+              "application/x-javascript": {
+                "schema": {
+                  "type": "string"
+                },
+                "examples": {
+                  "success": {
+                    "summary": "成功响应片段",
+                    "value": "_Callback({\"code\":0,\"subcode\":0,\"message\":\"\",\"data\":{main:{hasMoreFeeds:true,begintime:'1779607864',pagenum:'5',externparam:'basetime=1779607864&pagenum=5',dayspac:'2'},data:[{appid:'311',key:'feed_key',abstime:'1779707513',feedstime:'5月25日 19:11',opuin:'1078062748',uin:'1078062748',nickname:'昵称',html:'<li class=\"f-single\"><div class=\"f-info\">动态正文</div></li>'}]}});"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-apifox-folder": "Qzone Feed"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "QzoneCallbackPayload": {
+        "type": "object",
+        "description": "说明用 schema。真实响应是 _Callback(...) 包裹的非严格 JS object，需要先去壳再用 JS object parser 解析。",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "example": 0
+          },
+          "subcode": {
+            "type": "integer",
+            "example": 0
+          },
+          "message": {
+            "type": "string",
+            "example": ""
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "main": {
+                "type": "object",
+                "properties": {
+                  "hasMoreFeeds": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "begintime": {
+                    "type": "string",
+                    "example": "1779607864"
+                  },
+                  "pagenum": {
+                    "type": "string",
+                    "example": "5"
+                  },
+                  "externparam": {
+                    "type": "string",
+                    "example": "basetime=1779607864&pagenum=5&dayvalue=2"
+                  },
+                  "dayspac": {
+                    "type": "string",
+                    "example": "2"
+                  }
+                }
+              },
+              "data": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "appid": {
+                      "type": "string",
+                      "example": "311"
+                    },
+                    "key": {
+                      "type": "string",
+                      "example": "9cee4140792e146a00980600"
+                    },
+                    "abstime": {
+                      "type": "string",
+                      "example": "1779707513"
+                    },
+                    "feedstime": {
+                      "type": "string",
+                      "example": "5月25日 19:11"
+                    },
+                    "opuin": {
+                      "type": "string",
+                      "example": "1078062748"
+                    },
+                    "uin": {
+                      "type": "string",
+                      "example": "1078062748"
+                    },
+                    "nickname": {
+                      "type": "string",
+                      "example": "颜夕 张宝盈"
+                    },
+                    "html": {
+                      "type": "string",
+                      "description": "Feed HTML 片段，可解析 .f-info、.txt-box、img[src]、_likeInfo、comments-item 等。",
+                      "example": "<li class=\"f-single\"><div class=\"f-info\">动态正文</div></li>"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-qzone-notes": {
+    "gtkAlgorithm": "let hash = 5381; for each char in p_skey/skey: hash += (hash << 5) + charCode; g_tk = hash & 0x7fffffff;",
+    "firstPageDefaults": {
+      "pagenum": "1",
+      "begintime": "0",
+      "externparam": "",
+      "dayspac": "0",
+      "count": "10",
+      "outputhtmlfeed": "1"
+    },
+    "loadMore": "Use data.main.pagenum, data.main.begintime, data.main.externparam and data.main.dayspac from the previous response."
+  }
+}

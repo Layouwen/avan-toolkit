@@ -53,4 +53,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   testQzoneLogin: () => ipcRenderer.invoke('qzone:testLogin'),
   publishQzoneShuoshuo: (content: string) => ipcRenderer.invoke('qzone:publishShuoshuo', content),
   listQzoneShuoshuo: () => ipcRenderer.invoke('qzone:listShuoshuo'),
+  loadMoreQzoneShuoshuo: () => ipcRenderer.invoke('qzone:loadMoreShuoshuo'),
 });

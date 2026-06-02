@@ -42,8 +42,10 @@ const content = ref('');
 const running = ref(false);
 const testingLogin = ref(false);
 const loadingList = ref(false);
+const loadingMore = ref(false);
 const result = ref<QzoneAutomationResult | null>(null);
 const listItems = ref<QzoneListItem[]>([]);
+const hasMoreList = ref(false);
 const logContainer = ref<HTMLElement | null>(null);
 
 const statusType = computed(() => {
@@ -108,7 +110,7 @@ async function scrollLogsToBottom() {
 }
 
 async function runTestLogin() {
-  if (testingLogin.value || running.value || loadingList.value) {
+  if (testingLogin.value || running.value || loadingList.value || loadingMore.value) {
     return;
   }
 
@@ -133,7 +135,7 @@ async function runTestLogin() {
 
 async function publish() {
   const text = content.value.trim();
-  if (!text || running.value || testingLogin.value || loadingList.value) {
+  if (!text || running.value || testingLogin.value || loadingList.value || loadingMore.value) {
     return;
   }
 
@@ -157,20 +159,23 @@ async function publish() {
 }
 
 async function loadList() {
-  if (loadingList.value || running.value || testingLogin.value) {
+  if (loadingList.value || loadingMore.value || running.value || testingLogin.value) {
     return;
   }
 
   loadingList.value = true;
   result.value = null;
+  hasMoreList.value = false;
   try {
     await saveConfig();
     const listResult = await window.electronAPI.listQzoneShuoshuo();
     result.value = listResult;
     listItems.value = listResult.items;
+    hasMoreList.value = listResult.hasMore;
   }
   catch (error) {
     listItems.value = [];
+    hasMoreList.value = false;
     result.value = {
       success: false,
       message: error instanceof Error ? error.message : String(error),
@@ -179,6 +184,33 @@ async function loadList() {
   }
   finally {
     loadingList.value = false;
+    await scrollLogsToBottom();
+  }
+}
+
+async function loadMoreList() {
+  if (loadingMore.value || loadingList.value || running.value || testingLogin.value || !hasMoreList.value) {
+    return;
+  }
+
+  loadingMore.value = true;
+  result.value = null;
+  try {
+    const listResult = await window.electronAPI.loadMoreQzoneShuoshuo();
+    result.value = listResult;
+    listItems.value = [...listItems.value, ...listResult.items];
+    hasMoreList.value = listResult.hasMore;
+  }
+  catch (error) {
+    hasMoreList.value = false;
+    result.value = {
+      success: false,
+      message: error instanceof Error ? error.message : String(error),
+      steps: [],
+    };
+  }
+  finally {
+    loadingMore.value = false;
     await scrollLogsToBottom();
   }
 }
@@ -252,7 +284,7 @@ onMounted(loadConfig);
               <NButton
                 type="primary"
                 :loading="running"
-                :disabled="!content.trim() || running || testingLogin || loadingList"
+                :disabled="!content.trim() || running || testingLogin || loadingList || loadingMore"
                 @click="publish"
               >
                 {{ running ? t('qzonePage.publishing') : t('qzonePage.publish') }}
@@ -260,7 +292,7 @@ onMounted(loadConfig);
               <NButton
                 secondary
                 :loading="testingLogin"
-                :disabled="running || testingLogin || loadingList"
+                :disabled="running || testingLogin || loadingList || loadingMore"
                 @click="runTestLogin"
               >
                 {{ testingLogin ? t('qzonePage.testingLogin') : t('qzonePage.testLogin') }}
@@ -268,7 +300,7 @@ onMounted(loadConfig);
               <NButton
                 secondary
                 :loading="loadingList"
-                :disabled="running || testingLogin || loadingList"
+                :disabled="running || testingLogin || loadingList || loadingMore"
                 @click="loadList"
               >
                 {{ loadingList ? t('qzonePage.loadingList') : t('qzonePage.loadList') }}
@@ -283,40 +315,52 @@ onMounted(loadConfig);
       </NCard>
 
       <NCard :title="t('qzonePage.listTitle')" embedded>
-        <NList v-if="listItems.length > 0" bordered>
-          <NListItem v-for="item in listItems" :key="item.id">
-            <NThing>
-              <template #description>
-                {{ item.source }}
-              </template>
-              <div class="text-[#d8dee9] leading-6">
-                <div
-                  v-for="line in qzoneTextLines(item.text)"
-                  :key="line"
-                  class="break-all"
-                >
-                  {{ line }}
+        <NSpace vertical :size="12">
+          <NList v-if="listItems.length > 0" bordered>
+            <NListItem v-for="item in listItems" :key="item.id">
+              <NThing>
+                <template #description>
+                  {{ item.source }}
+                </template>
+                <div class="text-[#d8dee9] leading-6">
+                  <div
+                    v-for="line in qzoneTextLines(item.text)"
+                    :key="line"
+                    class="break-all"
+                  >
+                    {{ line }}
+                  </div>
                 </div>
-              </div>
-              <NImageGroup v-if="item.images.length > 0">
-                <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  <NImage
-                    v-for="image in item.images"
-                    :key="image"
-                    :src="image"
-                    :preview-src="image"
-                    object-fit="cover"
-                    class="qzone-feed-image"
-                    lazy
-                  />
-                </div>
-              </NImageGroup>
-            </NThing>
-          </NListItem>
-        </NList>
-        <div v-else class="text-[#94a3b8]">
-          {{ t('qzonePage.listEmpty') }}
-        </div>
+                <NImageGroup v-if="item.images.length > 0">
+                  <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <NImage
+                      v-for="image in item.images"
+                      :key="image"
+                      :src="image"
+                      :preview-src="image"
+                      object-fit="cover"
+                      class="qzone-feed-image"
+                      lazy
+                    />
+                  </div>
+                </NImageGroup>
+              </NThing>
+            </NListItem>
+          </NList>
+          <div v-else class="text-[#94a3b8]">
+            {{ t('qzonePage.listEmpty') }}
+          </div>
+          <NSpace v-if="listItems.length > 0" justify="center">
+            <NButton
+              secondary
+              :loading="loadingMore"
+              :disabled="loadingMore || loadingList || running || testingLogin || !hasMoreList"
+              @click="loadMoreList"
+            >
+              {{ loadingMore ? t('qzonePage.loadingMore') : (hasMoreList ? t('qzonePage.loadMore') : t('qzonePage.noMore')) }}
+            </NButton>
+          </NSpace>
+        </NSpace>
       </NCard>
 
       <NCard :title="t('qzonePage.logsTitle')" embedded>
