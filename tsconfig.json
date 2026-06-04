@@ -1,15 +1,14 @@
 {
   "compilerOptions": {
-    "allowJs": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "noImplicitAny": true,
-    "sourceMap": true,
-    "outDir": "dist",
+    "composite": true,
     "resolveJsonModule": true,
-    "composite": true
+    "allowJs": true,
+    "noImplicitAny": true,
+    "outDir": "dist",
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
   },
-  "files": [],
   "references": [
     {
       "path": "./tsconfig.main.json"
@@ -18,4 +17,5 @@
       "path": "./tsconfig.renderer.json"
     }
   ],
+  "files": []
 }

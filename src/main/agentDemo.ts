@@ -1,3 +1,4 @@
+import type { ModuleLogger } from './logger';
 import OpenAI from 'openai';
 import 'dotenv/config';
 
@@ -220,11 +221,15 @@ function getMessageText(message: ChatMessage): string {
 export async function runAgentRecommendation(
   userInput: string,
   runtimeConfig: AgentRuntimeConfig,
+  logger?: ModuleLogger,
 ): Promise<AgentRunResult> {
   const config = normalizeRuntimeConfig(runtimeConfig);
   if (!config.baseURL || !config.model || !config.apiKey) {
     throw new Error('Agent config baseURL/model/apiKey cannot be empty.');
   }
+
+  logger?.info(`Runtime config: baseURL=${config.baseURL}, model=${config.model}, apiKey=${config.apiKey}`, { sensitive: true });
+  logger?.info(`User prompt: ${userInput}`, { sensitive: true });
 
   const client = createOpenAIClient(config);
   const trace: string[] = [
@@ -254,6 +259,7 @@ export async function runAgentRecommendation(
       completion = await createChatCompletion(client, config.model, messages);
     }
     catch (error) {
+      logger?.error(`LLM request failed: ${toErrorMessage(error)}`, { sensitive: true });
       throw formatRequestError(error, config);
     }
 
@@ -266,6 +272,8 @@ export async function runAgentRecommendation(
 
     messages.push(assistantMessage);
     trace.push(`Round ${round + 1}: finish_reason=${choice.finish_reason}`);
+    logger?.info(`Round ${round + 1}: finish_reason=${choice.finish_reason}`);
+    logger?.info(`Assistant message: ${JSON.stringify(assistantMessage)}`, { sensitive: true });
 
     if (assistantMessage.tool_calls?.length) {
       for (const toolCall of assistantMessage.tool_calls) {
@@ -284,7 +292,9 @@ export async function runAgentRecommendation(
           : args;
 
         trace.push(`Call tool: ${functionName}`);
+        logger?.info(`Call tool: ${functionName}, args=${JSON.stringify(finalArgs)}`, { sensitive: true });
         const toolResult = await tool(finalArgs);
+        logger?.info(`Tool result: ${functionName}, result=${JSON.stringify(toolResult)}`, { sensitive: true });
 
         if (functionName === 'getLocation') {
           if (toolResult && typeof toolResult === 'object') {
@@ -304,6 +314,7 @@ export async function runAgentRecommendation(
 
     const answer = getMessageText(assistantMessage).trim();
     if (answer) {
+      logger?.success(`Final answer: ${answer}`, { sensitive: true });
       return {
         answer,
         model: config.model,
@@ -313,6 +324,7 @@ export async function runAgentRecommendation(
     }
   }
 
+  logger?.warn('Timed out: the model did not produce a final answer in 5 rounds.');
   return {
     answer: 'Timed out: the model did not produce a final answer in 5 rounds.',
     model: config.model,

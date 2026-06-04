@@ -21,6 +21,28 @@ export interface AgentResult {
   trace: string[];
 }
 
+export type LogModule = 'blogSync' | 'qzone' | 'agent';
+export type LogLevel = 'info' | 'success' | 'warn' | 'error';
+
+export interface AppLogEntry {
+  id: string;
+  module: LogModule;
+  scope: string;
+  runId: string;
+  level: LogLevel;
+  message: string;
+  timestamp: string;
+  sensitive?: boolean;
+}
+
+export interface LogFilters {
+  module?: LogModule;
+  level?: LogLevel;
+  runId?: string;
+  sensitive?: boolean;
+  limit?: number;
+}
+
 export interface QzoneConfig {
   loginMode: 'credentials' | 'qr';
   qqNumber: string;
@@ -75,9 +97,14 @@ export interface ElectronAPI {
   renameObsidianBlogFileName: (relativePath: string, fileName: string) => Promise<ObsidianBlog>;
   selectDirectory: () => Promise<string | null>;
   startSync: () => Promise<void>;
-  onSyncLog: (cb: (message: string, level: 'info' | 'success' | 'error') => void) => void;
+  onSyncLog: (cb: (message: string, level: LogLevel) => void) => void;
   offSyncLog: () => void;
   onSyncDone: (cb: (success: boolean, error?: string) => void) => void;
+  listLogs: (filters?: LogFilters) => Promise<AppLogEntry[]>;
+  clearLogs: (filters?: LogFilters) => Promise<void>;
+  openLogFile: () => Promise<void>;
+  onLogEvent: (cb: (entry: AppLogEntry) => void) => void;
+  offLogEvent: () => void;
   openExternal: (url: string) => Promise<void>;
   recommendActivity: (prompt: string, config: AgentConfig) => Promise<AgentResult>;
   testQzoneLogin: () => Promise<QzoneAutomationResult>;

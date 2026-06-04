@@ -1,8 +1,10 @@
 import type { BrowserContext, Frame, Locator, Page } from 'playwright';
 import type { AppConfig } from './configManager';
+import type { ModuleLogger } from './logger';
 import { Buffer } from 'node:buffer';
 import vm from 'node:vm';
 import { chromium } from 'playwright';
+import { createModuleLogger } from './logger';
 
 export interface QzoneAutomationResult {
   success: boolean;
@@ -102,9 +104,12 @@ interface QzoneFeedApiSession {
 let qzoneSession: QzoneBrowserSession | null = null;
 let qzoneFeedApiSession: QzoneFeedApiSession | null = null;
 let qzoneTaskQueue: Promise<void> = Promise.resolve();
+const qzoneStepLoggers = new WeakMap<string[], ModuleLogger>();
 
 function pushStep(steps: string[], message: string) {
-  steps.push(`${new Date().toLocaleTimeString()} ${message}`);
+  const line = `${new Date().toLocaleTimeString()} ${message}`;
+  steps.push(line);
+  qzoneStepLoggers.get(steps)?.info(line);
 }
 
 function timeoutPromise(ms: number): Promise<void> {
@@ -682,15 +687,21 @@ async function publishShuoshuo(page: Page, content: string, steps: string[]): Pr
 async function runWithContext(
   qzone: QzoneConfig,
   task: (context: BrowserContext, page: Page, steps: string[]) => Promise<QzoneAutomationResult>,
+  logger: ModuleLogger,
 ): Promise<QzoneAutomationResult> {
   return withQzoneTaskLock(async () => {
     const steps: string[] = [];
+    qzoneStepLoggers.set(steps, logger);
+    logger.info(`Qzone config: ${JSON.stringify(qzone)}`, { sensitive: true });
     try {
       const session = await getQzoneSession(qzone, steps);
-      return await task(session.context, session.page!, steps);
+      const result = await task(session.context, session.page!, steps);
+      logger.log(result.success ? 'success' : 'error', `Qzone task result: ${JSON.stringify(result)}`, { sensitive: true });
+      return result;
     }
     catch (error) {
       pushStep(steps, `执行失败: ${toErrorMessage(error)}`);
+      logger.error(`Qzone task failed: ${toErrorMessage(error)}`, { sensitive: true });
       return {
         success: false,
         message: toErrorMessage(error),
@@ -1123,6 +1134,7 @@ async function openTimeline(context: BrowserContext, page: Page, qzone: QzoneCon
 }
 
 export async function testQzoneLogin(qzone: QzoneConfig): Promise<QzoneAutomationResult> {
+  const logger = createModuleLogger({ module: 'qzone', scope: 'testLogin' });
   return runWithContext(qzone, async (_context, page, steps) => {
     const loggedIn = await ensureLoggedIn(page, qzone, steps);
     return {
@@ -1130,15 +1142,18 @@ export async function testQzoneLogin(qzone: QzoneConfig): Promise<QzoneAutomatio
       message: loggedIn ? 'QQ 空间登录检测成功。' : '登录超时，请重新测试或手动完成登录。',
       steps,
     };
-  });
+  }, logger);
 }
 
 export async function publishQzoneShuoshuo(
   qzone: QzoneConfig,
   content: string,
 ): Promise<QzoneAutomationResult> {
+  const logger = createModuleLogger({ module: 'qzone', scope: 'publish' });
+  logger.info(`Publish content: ${content}`, { sensitive: true });
   const text = content.trim();
   if (!text) {
+    logger.error('说说内容不能为空。');
     return {
       success: false,
       message: '说说内容不能为空。',
@@ -1156,10 +1171,11 @@ export async function publishQzoneShuoshuo(
       };
     }
     return publishShuoshuo(page, text, steps);
-  });
+  }, logger);
 }
 
 export async function listQzoneShuoshuo(qzone: QzoneConfig): Promise<QzoneListResult> {
+  const logger = createModuleLogger({ module: 'qzone', scope: 'listShuoshuo' });
   return runWithContext(qzone, async (context, page, steps) => {
     qzoneFeedApiSession = null;
     const loggedIn = await ensureLoggedIn(page, qzone, steps);
@@ -1206,35 +1222,40 @@ export async function listQzoneShuoshuo(qzone: QzoneConfig): Promise<QzoneListRe
       items,
       hasMore: false,
     };
-  }) as Promise<QzoneListResult>;
+  }, logger) as Promise<QzoneListResult>;
 }
 
 export async function loadMoreQzoneShuoshuo(): Promise<QzoneListResult> {
+  const logger = createModuleLogger({ module: 'qzone', scope: 'loadMoreShuoshuo' });
   return withQzoneTaskLock(async () => {
     const steps: string[] = [];
+    qzoneStepLoggers.set(steps, logger);
     try {
       const apiSession = qzoneFeedApiSession;
       if (!apiSession) {
+        logger.warn('暂无可继续加载的接口会话，请先点击加载列表。');
         return {
           success: false,
           message: '暂无可继续加载的接口会话，请先点击加载列表。',
           steps,
-          items: [],
+          items: [] as QzoneListItem[],
           hasMore: false,
         };
       }
       if (!apiSession.hasMoreFeeds) {
+        logger.success('没有更多好友动态可加载。');
         return {
           success: true,
           message: '没有更多好友动态可加载。',
           steps,
-          items: [],
+          items: [] as QzoneListItem[],
           hasMore: false,
         };
       }
 
       const apiItems = await readQzoneFeedItemsFromApiSession(apiSession, steps);
       const items = await inlineQzoneImagesByApiSession(apiSession, apiItems, steps);
+      logger.log(items.length > 0 ? 'success' : 'warn', `Load more result: items=${items.length}, hasMore=${apiSession.hasMoreFeeds}`, { sensitive: true });
       return {
         success: items.length > 0,
         message: items.length > 0
@@ -1247,11 +1268,12 @@ export async function loadMoreQzoneShuoshuo(): Promise<QzoneListResult> {
     }
     catch (error) {
       pushStep(steps, `加载更多失败: ${toErrorMessage(error)}`);
+      logger.error(`加载更多失败: ${toErrorMessage(error)}`, { sensitive: true });
       return {
         success: false,
         message: toErrorMessage(error),
         steps,
-        items: [],
+        items: [] as QzoneListItem[],
         hasMore: false,
       };
     }

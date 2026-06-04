@@ -27,6 +27,25 @@ interface CreateObsidianBlogPayload {
   categories?: string[];
 }
 
+interface AppLogEntry {
+  id: string;
+  module: 'blogSync' | 'qzone' | 'agent';
+  scope: string;
+  runId: string;
+  level: 'info' | 'success' | 'warn' | 'error';
+  message: string;
+  timestamp: string;
+  sensitive?: boolean;
+}
+
+interface LogFilters {
+  module?: AppLogEntry['module'];
+  level?: AppLogEntry['level'];
+  runId?: string;
+  sensitive?: boolean;
+  limit?: number;
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   getConfig: () => ipcRenderer.invoke('config:get'),
   setConfig: (config: PreloadConfig) => ipcRenderer.invoke('config:set', config),
@@ -47,6 +66,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onSyncDone: (cb: (success: boolean, error?: string) => void) => {
     ipcRenderer.once('sync:done', (_event, success, error) => cb(success, error));
+  },
+  listLogs: (filters?: LogFilters) => ipcRenderer.invoke('logs:list', filters),
+  clearLogs: (filters?: LogFilters) => ipcRenderer.invoke('logs:clear', filters),
+  openLogFile: () => ipcRenderer.invoke('logs:openFile'),
+  onLogEvent: (cb: (entry: AppLogEntry) => void) => {
+    ipcRenderer.invoke('logs:subscribe');
+    ipcRenderer.on('logs:event', (_event, entry) => cb(entry));
+  },
+  offLogEvent: () => {
+    ipcRenderer.removeAllListeners('logs:event');
+    ipcRenderer.invoke('logs:unsubscribe');
   },
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   recommendActivity: (prompt: string, config: PreloadConfig['agent']) => ipcRenderer.invoke('agent:recommendActivity', prompt, config),

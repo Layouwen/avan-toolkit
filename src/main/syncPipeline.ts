@@ -8,7 +8,7 @@ import process from 'node:process';
 import matter from 'gray-matter';
 import { v4 as uuidv4 } from 'uuid';
 
-export type LogLevel = 'info' | 'success' | 'error';
+export type LogLevel = 'info' | 'success' | 'warn' | 'error';
 export type LogCallback = (message: string, level: LogLevel) => void;
 
 function log(cb: LogCallback, message: string, level: LogLevel = 'info'): void {

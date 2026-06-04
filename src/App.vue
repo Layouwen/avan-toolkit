@@ -20,6 +20,7 @@ const menuOptions = computed(() => [
   { label: t('nav.blogSync'), key: '/sync' },
   { label: t('nav.qzone'), key: '/qzone' },
   { label: t('nav.agent'), key: '/agent' },
+  { label: t('nav.logs'), key: '/logs' },
   { label: t('nav.about'), key: '/about' },
 ]);
 

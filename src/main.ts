@@ -12,6 +12,13 @@ import {
   renameObsidianBlogTitle,
 } from './main/blogManager';
 import { getConfig, setConfig } from './main/configManager';
+import {
+  clearLogs,
+  createModuleLogger,
+  getLogFilePath,
+  listLogs,
+  subscribeLogs,
+} from './main/logger';
 import { closeQzoneSession, listQzoneShuoshuo, loadMoreQzoneShuoshuo, publishQzoneShuoshuo, testQzoneLogin } from './main/qzoneAutomation';
 import { runSyncPipeline } from './main/syncPipeline';
 
@@ -31,6 +38,7 @@ if (started) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+const logSubscriptions = new Map<number, () => void>();
 
 function createWindow() {
   // Create the browser window.
@@ -128,17 +136,40 @@ ipcMain.handle('dialog:selectDir', async () => {
 
 ipcMain.handle('sync:start', async () => {
   const config = await getConfig();
+  const logger = createModuleLogger({
+    module: 'blogSync',
+    scope: 'sync',
+    onLog: entry => mainWindow?.webContents.send('sync:log', entry.message, entry.level),
+  });
   try {
-    await runSyncPipeline(config, (message, level) => {
-      mainWindow?.webContents.send('sync:log', message, level);
-    });
+    await runSyncPipeline(config, (message, level) => logger.log(level, message));
+    logger.success('同步流程结束。');
     mainWindow?.webContents.send('sync:done', true);
   }
   catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    mainWindow?.webContents.send('sync:log', `错误: ${message}`, 'error');
+    logger.error(`错误: ${message}`);
     mainWindow?.webContents.send('sync:done', false, message);
   }
+});
+
+ipcMain.handle('logs:list', (_event, filters) => listLogs(filters));
+
+ipcMain.handle('logs:clear', (_event, filters) => {
+  clearLogs(filters);
+});
+
+ipcMain.handle('logs:openFile', () => shell.openPath(path.dirname(getLogFilePath())));
+
+ipcMain.handle('logs:subscribe', (event) => {
+  if (!logSubscriptions.has(event.sender.id)) {
+    logSubscriptions.set(event.sender.id, subscribeLogs(event.sender));
+  }
+});
+
+ipcMain.handle('logs:unsubscribe', (event) => {
+  logSubscriptions.get(event.sender.id)?.();
+  logSubscriptions.delete(event.sender.id);
 });
 
 ipcMain.handle('agent:recommendActivity', async (_event, userInput: string, config: AgentInvokeConfig) => {
@@ -150,7 +181,8 @@ ipcMain.handle('agent:recommendActivity', async (_event, userInput: string, conf
     throw new Error('Agent config baseURL/model/apiKey is required.');
   }
 
-  return runAgentRecommendation(text, config);
+  const logger = createModuleLogger({ module: 'agent', scope: 'recommendActivity' });
+  return runAgentRecommendation(text, config, logger);
 });
 
 ipcMain.handle('qzone:testLogin', async () => {

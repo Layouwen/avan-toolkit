@@ -23,6 +23,10 @@ const router = createRouter({
       path: '/qzone',
       component: () => import('../views/QzonePublisher.vue'),
     },
+    {
+      path: '/logs',
+      component: () => import('../views/Logs.vue'),
+    },
   ],
 });
 
