@@ -80,6 +80,23 @@ export interface ObsidianBlog {
   categories: string[];
 }
 
+export type BlogValidationSeverity = 'error' | 'warn';
+
+export interface BlogValidationIssue {
+  id: string;
+  relativePath: string;
+  absolutePath: string;
+  field: string;
+  message: string;
+  severity: BlogValidationSeverity;
+}
+
+export interface BlogValidationResult {
+  ok: boolean;
+  issues: BlogValidationIssue[];
+  checkedFiles: number;
+}
+
 export interface CreateObsidianBlogPayload {
   title: string;
   directory?: string;
@@ -91,6 +108,8 @@ export interface ElectronAPI {
   getConfig: () => Promise<AppConfig>;
   setConfig: (config: AppConfig) => Promise<void>;
   listObsidianBlogs: () => Promise<ObsidianBlog[]>;
+  validateObsidianBlogs: () => Promise<BlogValidationResult>;
+  openObsidianBlog: (relativePath: string) => Promise<void>;
   createObsidianBlog: (payload: CreateObsidianBlogPayload) => Promise<ObsidianBlog>;
   deleteObsidianBlog: (relativePath: string) => Promise<void>;
   renameObsidianBlogTitle: (relativePath: string, title: string) => Promise<ObsidianBlog>;

@@ -84,6 +84,14 @@ export default {
       failed: 'Failed: {error}',
       done: '── Sync complete ✓',
     },
+    validation: {
+      title: 'Frontmatter Validation',
+      refresh: 'Revalidate',
+      ok: 'Validation passed. Checked {count} synced files.',
+      failed: 'Found {count} frontmatter issues. Fix them before syncing.',
+      syncBlocked: 'Sync stopped: found {count} frontmatter issues. Fix the files listed below first.',
+      open: 'Open',
+    },
   },
   about: {
     title: 'About',

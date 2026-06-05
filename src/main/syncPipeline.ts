@@ -7,6 +7,7 @@ import path from 'node:path';
 import process from 'node:process';
 import matter from 'gray-matter';
 import { v4 as uuidv4 } from 'uuid';
+import { validateObsidianBlogs } from './blogValidator';
 
 export type LogLevel = 'info' | 'success' | 'warn' | 'error';
 export type LogCallback = (message: string, level: LogLevel) => void;
@@ -130,7 +131,7 @@ export async function runSyncPipeline(config: AppConfig, cb: LogCallback): Promi
   const { obsidianBlogDir, hexoBlogDir } = config;
 
   // Step 1: Validate paths
-  log(cb, '── Step 1/7  校验目录路径', 'info');
+  log(cb, '── Step 1/9  校验目录路径', 'info');
   if (!(await directoryExists(obsidianBlogDir))) {
     throw new Error(`Obsidian 目录不存在: ${obsidianBlogDir}`);
   }
@@ -139,8 +140,21 @@ export async function runSyncPipeline(config: AppConfig, cb: LogCallback): Promi
   }
   log(cb, '  路径校验通过', 'success');
 
+  log(cb, '── Step 2/9  校验博客 frontmatter', 'info');
+  const validation = await validateObsidianBlogs(config);
+  if (!validation.ok) {
+    for (const issue of validation.issues.slice(0, 20)) {
+      log(cb, `  ${issue.relativePath} [${issue.field}] ${issue.message}`, 'error');
+    }
+    if (validation.issues.length > 20) {
+      log(cb, `  还有 ${validation.issues.length - 20} 个问题，请在底部校验结果中查看。`, 'error');
+    }
+    throw new Error(`博客 frontmatter 校验失败：${validation.issues.length} 个问题`);
+  }
+  log(cb, `  校验通过，共检查 ${validation.checkedFiles} 个文件`, 'success');
+
   // Step 2 & 3: Copy article and summary markdown files
-  log(cb, '── Step 2/7  复制 article 文章', 'info');
+  log(cb, '── Step 3/9  复制 article 文章', 'info');
   const articleCount = await copyMdFiles(
     path.join(obsidianBlogDir, 'article'),
     path.join(hexoBlogDir, 'source', '_posts', 'article'),
@@ -148,7 +162,7 @@ export async function runSyncPipeline(config: AppConfig, cb: LogCallback): Promi
   );
   log(cb, `  复制完成，共 ${articleCount} 篇`, 'success');
 
-  log(cb, '── Step 3/7  复制 summary 文章', 'info');
+  log(cb, '── Step 4/9  复制 summary 文章', 'info');
   const summaryCount = await copyMdFiles(
     path.join(obsidianBlogDir, 'summary'),
     path.join(hexoBlogDir, 'source', '_posts', 'summary'),
@@ -157,28 +171,28 @@ export async function runSyncPipeline(config: AppConfig, cb: LogCallback): Promi
   log(cb, `  复制完成，共 ${summaryCount} 篇`, 'success');
 
   // // Step 5: git add
-  log(cb, '── Step 5/7  git add .', 'info');
+  log(cb, '── Step 5/9  git add .', 'info');
   await runCommand('git', ['add', '.'], hexoBlogDir, cb);
   log(cb, '  git add 完成', 'success');
 
   // // Step 6: git commit
   const date = new Date().toISOString().slice(0, 10);
   const commitMsg = `"chore: sync update blog from Obsidian [${date}]"`;
-  log(cb, `── Step 6/7  git commit ${commitMsg}`, 'info');
+  log(cb, `── Step 6/9  git commit ${commitMsg}`, 'info');
   await runCommand('git', ['commit', '-m', commitMsg], hexoBlogDir, cb);
   log(cb, '  git commit 完成', 'success');
 
   // // Step 7: git push
-  log(cb, '── Step 7/7  git push', 'info');
+  log(cb, '── Step 7/9  git push', 'info');
   await runCommand('git', ['push'], hexoBlogDir, cb);
   log(cb, '  git push 完成', 'success');
 
   // // Step 4: hexo generate
-  log(cb, '── Step 4/7  执行 hexo generate', 'info');
+  log(cb, '── Step 8/9  执行 hexo generate', 'info');
   const hexo = await resolveHexoCommand(hexoBlogDir);
   await runCommand(hexo.cmd, hexo.args, hexoBlogDir, cb);
   log(cb, '  hexo generate 完成', 'success');
-  log(cb, '── Step 8/7  执行 hexo deploy', 'info');
+  log(cb, '── Step 9/9  执行 hexo deploy', 'info');
   await runCommand(hexo.cmd, ['deploy'], hexoBlogDir, cb);
   log(cb, '  hexo deploy 完成', 'success');
 }

@@ -84,6 +84,14 @@ export default {
       failed: '失败: {error}',
       done: '── 同步完成 ✓',
     },
+    validation: {
+      title: 'Frontmatter 校验',
+      refresh: '重新校验',
+      ok: '校验通过，已检查 {count} 个同步文件。',
+      failed: '发现 {count} 个 frontmatter 问题，请先修复后再同步。',
+      syncBlocked: '同步已停止：发现 {count} 个 frontmatter 问题，请先在底部校验列表中修复。',
+      open: '打开',
+    },
   },
   about: {
     title: '关于',

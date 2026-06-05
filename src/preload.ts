@@ -46,10 +46,27 @@ interface LogFilters {
   limit?: number;
 }
 
+interface BlogValidationIssue {
+  id: string;
+  relativePath: string;
+  absolutePath: string;
+  field: string;
+  message: string;
+  severity: 'error' | 'warn';
+}
+
+interface BlogValidationResult {
+  ok: boolean;
+  issues: BlogValidationIssue[];
+  checkedFiles: number;
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   getConfig: () => ipcRenderer.invoke('config:get'),
   setConfig: (config: PreloadConfig) => ipcRenderer.invoke('config:set', config),
   listObsidianBlogs: () => ipcRenderer.invoke('blogs:list'),
+  validateObsidianBlogs: (): Promise<BlogValidationResult> => ipcRenderer.invoke('blogs:validate'),
+  openObsidianBlog: (relativePath: string) => ipcRenderer.invoke('blogs:openInEditor', relativePath),
   createObsidianBlog: (payload: CreateObsidianBlogPayload) => ipcRenderer.invoke('blogs:create', payload),
   deleteObsidianBlog: (relativePath: string) => ipcRenderer.invoke('blogs:delete', relativePath),
   renameObsidianBlogTitle: (relativePath: string, title: string) =>

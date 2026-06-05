@@ -1,4 +1,5 @@
 import type { CreateObsidianBlogPayload } from './main/blogManager';
+import { spawn } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
@@ -11,6 +12,7 @@ import {
   renameObsidianBlogFileName,
   renameObsidianBlogTitle,
 } from './main/blogManager';
+import { validateObsidianBlogs } from './main/blogValidator';
 import { getConfig, setConfig } from './main/configManager';
 import {
   clearLogs,
@@ -30,6 +32,55 @@ interface AgentInvokeConfig {
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function assertInside(parent: string, target: string): void {
+  const relative = path.relative(parent, target);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error('Path is outside the Obsidian blog directory.');
+  }
+}
+
+function spawnDetached(command: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      detached: true,
+      stdio: 'ignore',
+    });
+    child.once('error', reject);
+    child.once('spawn', () => {
+      child.unref();
+      resolve();
+    });
+  });
+}
+
+async function openMarkdownInEditor(absolutePath: string): Promise<void> {
+  try {
+    await shell.openExternal(`obsidian://open?path=${encodeURIComponent(absolutePath)}`);
+    return;
+  }
+  catch {
+    // Continue with Cursor fallback below.
+  }
+
+  try {
+    await shell.openExternal(encodeURI(`cursor://file${absolutePath}`));
+    return;
+  }
+  catch {
+    // Continue with Cursor CLI fallback below.
+  }
+
+  try {
+    await spawnDetached('cursor', [absolutePath]);
+  }
+  catch {
+    const error = await shell.openPath(absolutePath);
+    if (error) {
+      throw new Error(error);
+    }
+  }
 }
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -103,6 +154,26 @@ ipcMain.handle('config:set', (_event, config) => setConfig(config));
 ipcMain.handle('blogs:list', async () => {
   const config = await getConfig();
   return listObsidianBlogs(config);
+});
+
+ipcMain.handle('blogs:validate', async () => {
+  const config = await getConfig();
+  return validateObsidianBlogs(config);
+});
+
+ipcMain.handle('blogs:openInEditor', async (_event, relativePath: string) => {
+  const config = await getConfig();
+  const root = config.obsidianBlogDir.trim();
+  if (!root) {
+    throw new Error('Obsidian Blog directory is not configured.');
+  }
+  if (!relativePath || !relativePath.endsWith('.md')) {
+    throw new Error('Only markdown blog files can be opened.');
+  }
+
+  const absolutePath = path.resolve(root, relativePath);
+  assertInside(root, absolutePath);
+  await openMarkdownInEditor(absolutePath);
 });
 
 ipcMain.handle('blogs:create', async (_event, payload: CreateObsidianBlogPayload) => {

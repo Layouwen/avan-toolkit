@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TreeOption } from 'naive-ui';
-import type { AppConfig, ObsidianBlog } from '../electron-api.d';
+import type { AppConfig, BlogValidationIssue, BlogValidationResult, ObsidianBlog } from '../electron-api.d';
 import {
   NAlert,
   NAutoComplete,
@@ -29,7 +29,7 @@ const { t } = useI18n();
 interface LogLine {
   id: number;
   text: string;
-  level: 'info' | 'success' | 'error';
+  level: 'info' | 'success' | 'warn' | 'error';
 }
 
 type BlogTreeNode = TreeOption & {
@@ -63,9 +63,17 @@ const logs = ref<LogLine[]>([]);
 const blogs = ref<ObsidianBlog[]>([]);
 const syncing = ref(false);
 const loadingBlogs = ref(false);
+const validatingBlogs = ref(false);
 const creatingBlog = ref(false);
 const deletingBlogId = ref('');
 const blogError = ref('');
+const validationError = ref('');
+const validationResult = ref<BlogValidationResult>({
+  ok: true,
+  issues: [],
+  checkedFiles: 0,
+});
+const openingValidationIssueId = ref('');
 const status = ref<'idle' | 'syncing' | 'success' | 'error'>('idle');
 const logContainer = ref<HTMLElement | null>(null);
 const newBlogTitle = ref('');
@@ -319,6 +327,7 @@ async function loadBlogs() {
   blogError.value = '';
   if (!config.value.obsidianBlogDir.trim()) {
     blogs.value = [];
+    validationResult.value = { ok: true, issues: [], checkedFiles: 0 };
     return;
   }
 
@@ -327,6 +336,7 @@ async function loadBlogs() {
     await window.electronAPI.setConfig(plainConfig());
     blogs.value = await window.electronAPI.listObsidianBlogs();
     expandedBlogKeys.value = allFolderKeys.value;
+    await loadValidation();
   }
   catch (error) {
     blogs.value = [];
@@ -334,6 +344,29 @@ async function loadBlogs() {
   }
   finally {
     loadingBlogs.value = false;
+  }
+}
+
+async function loadValidation(): Promise<BlogValidationResult> {
+  validationError.value = '';
+  if (!config.value.obsidianBlogDir.trim()) {
+    validationResult.value = { ok: true, issues: [], checkedFiles: 0 };
+    return validationResult.value;
+  }
+
+  validatingBlogs.value = true;
+  try {
+    await window.electronAPI.setConfig(plainConfig());
+    validationResult.value = await window.electronAPI.validateObsidianBlogs();
+    return validationResult.value;
+  }
+  catch (error) {
+    validationResult.value = { ok: true, issues: [], checkedFiles: 0 };
+    validationError.value = error instanceof Error ? error.message : String(error);
+    return validationResult.value;
+  }
+  finally {
+    validatingBlogs.value = false;
   }
 }
 
@@ -373,6 +406,7 @@ async function removeBlog(blog: ObsidianBlog) {
   try {
     await window.electronAPI.deleteObsidianBlog(blog.relativePath);
     blogs.value = blogs.value.filter(item => item.id !== blog.id);
+    await loadValidation();
   }
   catch (error) {
     blogError.value = error instanceof Error ? error.message : String(error);
@@ -591,6 +625,7 @@ async function confirmRename() {
     );
     contextMenuBlog.value = updated;
     renameModalShow.value = false;
+    await loadValidation();
     return true;
   }
   catch (error) {
@@ -605,15 +640,28 @@ async function confirmRename() {
 async function startSync() {
   if (syncing.value)
     return;
+  await window.electronAPI.setConfig(plainConfig());
+  const validation = await loadValidation();
+  if (!validation.ok) {
+    status.value = 'error';
+    logs.value = [
+      {
+        id: logIdCounter++,
+        text: t('blogSync.validation.syncBlocked', { count: validation.issues.length }),
+        level: 'error',
+      },
+    ];
+    return;
+  }
+
   syncing.value = true;
   status.value = 'syncing';
   logs.value = [];
 
-  await window.electronAPI.setConfig(plainConfig());
-
   window.electronAPI.onSyncDone((success, error) => {
     syncing.value = false;
     status.value = success ? 'success' : 'error';
+    void loadValidation();
     if (error) {
       logs.value.push({ id: logIdCounter++, text: t('blogSync.logs.failed', { error }), level: 'error' });
     }
@@ -632,6 +680,24 @@ async function startSync() {
 
 function clearLogs() {
   logs.value = [];
+}
+
+function issueTagType(issue: BlogValidationIssue) {
+  return issue.severity === 'error' ? 'error' : 'warning';
+}
+
+async function openValidationIssue(issue: BlogValidationIssue) {
+  openingValidationIssueId.value = issue.id;
+  validationError.value = '';
+  try {
+    await window.electronAPI.openObsidianBlog(issue.relativePath);
+  }
+  catch (error) {
+    validationError.value = error instanceof Error ? error.message : String(error);
+  }
+  finally {
+    openingValidationIssueId.value = '';
+  }
 }
 </script>
 
@@ -714,6 +780,7 @@ function clearLogs() {
                 :class="{
                   'text-[#c9d1d9]': line.level === 'info',
                   'text-[#40c074]': line.level === 'success',
+                  'text-[#f0a020]': line.level === 'warn',
                   'text-[#e05252]': line.level === 'error',
                 }"
               >
@@ -724,6 +791,70 @@ function clearLogs() {
                 {{ t('blogSync.logs.empty') }}
               </div>
             </div>
+          </NCard>
+
+          <NCard embedded>
+            <template #header>
+              {{ t('blogSync.validation.title') }}
+            </template>
+            <template #header-extra>
+              <NButton
+                tertiary
+                size="small"
+                :loading="validatingBlogs"
+                :disabled="!config.obsidianBlogDir"
+                @click="loadValidation"
+              >
+                {{ t('blogSync.validation.refresh') }}
+              </NButton>
+            </template>
+
+            <NSpace vertical :size="12">
+              <NAlert v-if="validationError" type="error" closable @close="validationError = ''">
+                {{ validationError }}
+              </NAlert>
+
+              <NAlert
+                v-if="validationResult.ok"
+                type="success"
+              >
+                {{ t('blogSync.validation.ok', { count: validationResult.checkedFiles }) }}
+              </NAlert>
+
+              <template v-else>
+                <NAlert type="error">
+                  {{ t('blogSync.validation.failed', { count: validationResult.issues.length }) }}
+                </NAlert>
+                <div class="validation-list">
+                  <div
+                    v-for="issue in validationResult.issues"
+                    :key="issue.id"
+                    class="validation-row"
+                  >
+                    <div class="min-w-0">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <NTag size="small" :type="issueTagType(issue)" round>
+                          {{ issue.field }}
+                        </NTag>
+                        <span class="break-all text-[#e5e7eb]">{{ issue.relativePath }}</span>
+                      </div>
+                      <div class="mt-1 text-sm text-[#b6c2d1]">
+                        {{ issue.message }}
+                      </div>
+                    </div>
+                    <NButton
+                      size="small"
+                      tertiary
+                      class="shrink-0"
+                      :loading="openingValidationIssueId === issue.id"
+                      @click="openValidationIssue(issue)"
+                    >
+                      {{ t('blogSync.validation.open') }}
+                    </NButton>
+                  </div>
+                </div>
+              </template>
+            </NSpace>
           </NCard>
         </div>
       </NTabPane>
@@ -944,5 +1075,24 @@ function clearLogs() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.validation-list {
+  display: flex;
+  max-height: 320px;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.validation-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
 }
 </style>
