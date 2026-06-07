@@ -75,6 +75,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openObsidianBlog: (relativePath: string) => ipcRenderer.invoke('blogs:openInEditor', relativePath),
   openBlogValidationIssue: (source: 'obsidian' | 'hexo', absolutePath: string) =>
     ipcRenderer.invoke('blogs:openValidationIssue', source, absolutePath),
+  openConfiguredBlogDir: (kind: 'obsidian' | 'hexo') => ipcRenderer.invoke('blogs:openConfiguredDir', kind),
+  openObsidianPage: () => ipcRenderer.invoke('blogs:openObsidianPage'),
+  openHexoProjectInEditor: () => ipcRenderer.invoke('blogs:openHexoProjectInEditor'),
   createObsidianBlog: (payload: CreateObsidianBlogPayload) => ipcRenderer.invoke('blogs:create', payload),
   deleteObsidianBlog: (relativePath: string) => ipcRenderer.invoke('blogs:delete', relativePath),
   renameObsidianBlogTitle: (relativePath: string, title: string) =>

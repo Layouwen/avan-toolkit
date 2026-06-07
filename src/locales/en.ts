@@ -92,6 +92,10 @@ export default {
       failed: 'Found {count} issues: {errors} errors, {warnings} warnings.',
       syncBlocked: 'Sync stopped: found {count} blocking errors. Fix the files listed below first.',
       open: 'Open',
+      openObsidianDir: 'Open Obsidian Folder',
+      openHexoDir: 'Open Hexo Folder',
+      openObsidianPage: 'Open Obsidian Page',
+      openProjectDir: 'Open Project Folder',
     },
   },
   about: {

@@ -118,6 +118,9 @@ export interface ElectronAPI {
   validateObsidianBlogs: () => Promise<BlogValidationResult>;
   openObsidianBlog: (relativePath: string) => Promise<void>;
   openBlogValidationIssue: (source: BlogValidationSource, absolutePath: string) => Promise<void>;
+  openConfiguredBlogDir: (kind: BlogValidationSource) => Promise<void>;
+  openObsidianPage: () => Promise<void>;
+  openHexoProjectInEditor: () => Promise<void>;
   createObsidianBlog: (payload: CreateObsidianBlogPayload) => Promise<ObsidianBlog>;
   deleteObsidianBlog: (relativePath: string) => Promise<void>;
   renameObsidianBlogTitle: (relativePath: string, title: string) => Promise<ObsidianBlog>;

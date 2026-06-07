@@ -95,6 +95,13 @@ async function openMarkdownWithCommand(absolutePath: string, command: 'cursor' |
   }
 }
 
+async function openDirectoryInSystem(dirPath: string): Promise<void> {
+  const error = await shell.openPath(dirPath);
+  if (error) {
+    throw new Error(error);
+  }
+}
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
@@ -214,6 +221,40 @@ ipcMain.handle('blogs:openValidationIssue', async (_event, source: 'obsidian' | 
   }
   assertInside(hexoRoot, resolvedPath);
   await openMarkdownWithCommand(resolvedPath, config.hexoEditorCommand);
+});
+
+ipcMain.handle('blogs:openConfiguredDir', async (_event, kind: 'obsidian' | 'hexo') => {
+  const config = await getConfig();
+  if (kind !== 'obsidian' && kind !== 'hexo') {
+    throw new Error('Unknown blog directory kind.');
+  }
+
+  const dirPath = kind === 'obsidian' ? config.obsidianBlogDir.trim() : config.hexoBlogDir.trim();
+  if (!dirPath) {
+    throw new Error(`${kind === 'obsidian' ? 'Obsidian Blog' : 'Hexo Blog'} directory is not configured.`);
+  }
+
+  await openDirectoryInSystem(path.resolve(dirPath));
+});
+
+ipcMain.handle('blogs:openObsidianPage', async () => {
+  const config = await getConfig();
+  const obsidianRoot = config.obsidianBlogDir.trim();
+  if (!obsidianRoot) {
+    throw new Error('Obsidian Blog directory is not configured.');
+  }
+
+  await shell.openExternal('obsidian://open');
+});
+
+ipcMain.handle('blogs:openHexoProjectInEditor', async () => {
+  const config = await getConfig();
+  const hexoRoot = config.hexoBlogDir.trim();
+  if (!hexoRoot) {
+    throw new Error('Hexo Blog directory is not configured.');
+  }
+
+  await openMarkdownWithCommand(path.resolve(hexoRoot), config.hexoEditorCommand);
 });
 
 ipcMain.handle('blogs:create', async (_event, payload: CreateObsidianBlogPayload) => {

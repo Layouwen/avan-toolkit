@@ -721,6 +721,28 @@ async function openValidationIssue(issue: BlogValidationIssue) {
     openingValidationIssueId.value = '';
   }
 }
+
+async function runValidationAction(action: () => Promise<void>) {
+  validationError.value = '';
+  try {
+    await action();
+  }
+  catch (error) {
+    validationError.value = error instanceof Error ? error.message : String(error);
+  }
+}
+
+function openConfiguredBlogDir(kind: 'obsidian' | 'hexo') {
+  return runValidationAction(() => window.electronAPI.openConfiguredBlogDir(kind));
+}
+
+function openObsidianPage() {
+  return runValidationAction(() => window.electronAPI.openObsidianPage());
+}
+
+function openHexoProjectInEditor() {
+  return runValidationAction(() => window.electronAPI.openHexoProjectInEditor());
+}
 </script>
 
 <template>
@@ -828,15 +850,49 @@ async function openValidationIssue(issue: BlogValidationIssue) {
               {{ t('blogSync.validation.title') }}
             </template>
             <template #header-extra>
-              <NButton
-                tertiary
-                size="small"
-                :loading="validatingBlogs"
-                :disabled="!config.obsidianBlogDir"
-                @click="loadValidation"
-              >
-                {{ t('blogSync.validation.refresh') }}
-              </NButton>
+              <NSpace :size="8" justify="end">
+                <NButton
+                  tertiary
+                  size="small"
+                  :disabled="!config.obsidianBlogDir"
+                  @click="openConfiguredBlogDir('obsidian')"
+                >
+                  {{ t('blogSync.validation.openObsidianDir') }}
+                </NButton>
+                <NButton
+                  tertiary
+                  size="small"
+                  :disabled="!config.hexoBlogDir"
+                  @click="openConfiguredBlogDir('hexo')"
+                >
+                  {{ t('blogSync.validation.openHexoDir') }}
+                </NButton>
+                <NButton
+                  tertiary
+                  size="small"
+                  :disabled="!config.obsidianBlogDir"
+                  @click="openObsidianPage"
+                >
+                  {{ t('blogSync.validation.openObsidianPage') }}
+                </NButton>
+                <NButton
+                  tertiary
+                  size="small"
+                  :disabled="!config.hexoBlogDir"
+                  @click="openHexoProjectInEditor"
+                >
+                  {{ t('blogSync.validation.openProjectDir') }}
+                </NButton>
+                <NButton
+                  tertiary
+                  size="small"
+                  :loading="validatingBlogs"
+                  :disabled="!config.obsidianBlogDir"
+                  @click="loadValidation"
+                >
+                  {{ t('blogSync.validation.refresh') }}
+                </NButton>
+              </NSpace>
             </template>
 
             <NSpace vertical :size="12">

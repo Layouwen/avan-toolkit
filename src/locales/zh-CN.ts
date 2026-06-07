@@ -92,6 +92,10 @@ export default {
       failed: '发现 {count} 个问题：{errors} 个错误，{warnings} 个警告。',
       syncBlocked: '同步已停止：发现 {count} 个阻断错误，请先在底部校验列表中修复。',
       open: '打开',
+      openObsidianDir: '打开 Obsidian 目录',
+      openHexoDir: '打开 Hexo 目录',
+      openObsidianPage: '打开 Obsidian 页面',
+      openProjectDir: '打开项目目录',
     },
   },
   about: {
