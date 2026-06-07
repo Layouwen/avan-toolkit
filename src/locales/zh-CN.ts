@@ -35,6 +35,7 @@ export default {
       obsidianPlaceholder: '例如：D:\\Obsidian\\blog',
       hexoBlogDir: 'Hexo 项目目录',
       hexoPlaceholder: '例如：D:\\code\\blog',
+      hexoEditorCommand: 'Hexo 文件打开方式',
       browse: '浏览',
     },
     action: {
@@ -85,11 +86,11 @@ export default {
       done: '── 同步完成 ✓',
     },
     validation: {
-      title: 'Frontmatter 校验',
+      title: 'Frontmatter 与同步一致性校验',
       refresh: '重新校验',
-      ok: '校验通过，已检查 {count} 个同步文件。',
-      failed: '发现 {count} 个 frontmatter 问题，请先修复后再同步。',
-      syncBlocked: '同步已停止：发现 {count} 个 frontmatter 问题，请先在底部校验列表中修复。',
+      ok: '校验通过，已检查 {count} 个同步文件（Obsidian {obsidian}，Hexo {hexo}）。',
+      failed: '发现 {count} 个问题：{errors} 个错误，{warnings} 个警告。',
+      syncBlocked: '同步已停止：发现 {count} 个阻断错误，请先在底部校验列表中修复。',
       open: '打开',
     },
   },

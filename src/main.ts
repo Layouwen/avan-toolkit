@@ -83,6 +83,18 @@ async function openMarkdownInEditor(absolutePath: string): Promise<void> {
   }
 }
 
+async function openMarkdownWithCommand(absolutePath: string, command: 'cursor' | 'code'): Promise<void> {
+  try {
+    await spawnDetached(command, [absolutePath]);
+  }
+  catch {
+    const error = await shell.openPath(absolutePath);
+    if (error) {
+      throw new Error(`${command} 打开失败: ${error}`);
+    }
+  }
+}
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
@@ -174,6 +186,34 @@ ipcMain.handle('blogs:openInEditor', async (_event, relativePath: string) => {
   const absolutePath = path.resolve(root, relativePath);
   assertInside(root, absolutePath);
   await openMarkdownInEditor(absolutePath);
+});
+
+ipcMain.handle('blogs:openValidationIssue', async (_event, source: 'obsidian' | 'hexo', absolutePath: string) => {
+  const config = await getConfig();
+  const obsidianRoot = config.obsidianBlogDir.trim();
+  const hexoRoot = config.hexoBlogDir.trim();
+  const resolvedPath = path.resolve(absolutePath);
+  if (source !== 'obsidian' && source !== 'hexo') {
+    throw new Error('Unknown blog validation issue source.');
+  }
+  if (!resolvedPath.endsWith('.md')) {
+    throw new Error('Only markdown blog files can be opened.');
+  }
+
+  if (source === 'obsidian') {
+    if (!obsidianRoot) {
+      throw new Error('Obsidian Blog directory is not configured.');
+    }
+    assertInside(obsidianRoot, resolvedPath);
+    await openMarkdownInEditor(resolvedPath);
+    return;
+  }
+
+  if (!hexoRoot) {
+    throw new Error('Hexo Blog directory is not configured.');
+  }
+  assertInside(hexoRoot, resolvedPath);
+  await openMarkdownWithCommand(resolvedPath, config.hexoEditorCommand);
 });
 
 ipcMain.handle('blogs:create', async (_event, payload: CreateObsidianBlogPayload) => {

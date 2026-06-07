@@ -5,6 +5,7 @@ import { app } from 'electron';
 export interface AppConfig {
   obsidianBlogDir: string;
   hexoBlogDir: string;
+  hexoEditorCommand: 'cursor' | 'code';
   locale: string;
   agent: {
     baseURL: string;
@@ -25,6 +26,7 @@ const DEFAULT_QZONE_PROFILE_DIR = path.join(app.getPath('userData'), 'qzone-play
 const DEFAULT_CONFIG: AppConfig = {
   obsidianBlogDir: '',
   hexoBlogDir: '',
+  hexoEditorCommand: 'cursor',
   locale: 'zh-CN',
   agent: {
     baseURL: 'http://localhost:11434/v1',

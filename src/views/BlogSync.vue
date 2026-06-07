@@ -46,6 +46,7 @@ type SortOrder = 'asc' | 'desc';
 const config = ref<AppConfig>({
   obsidianBlogDir: '',
   hexoBlogDir: '',
+  hexoEditorCommand: 'cursor',
   locale: '',
   agent: {
     baseURL: '',
@@ -72,6 +73,10 @@ const validationResult = ref<BlogValidationResult>({
   ok: true,
   issues: [],
   checkedFiles: 0,
+  obsidianCheckedFiles: 0,
+  hexoCheckedFiles: 0,
+  errorCount: 0,
+  warningCount: 0,
 });
 const openingValidationIssueId = ref('');
 const status = ref<'idle' | 'syncing' | 'success' | 'error'>('idle');
@@ -137,6 +142,11 @@ const sortByOptions = computed(() => [
 const sortOrderOptions = computed(() => [
   { label: t('blogSync.blogs.sortDesc'), value: 'desc' },
   { label: t('blogSync.blogs.sortAsc'), value: 'asc' },
+]);
+
+const hexoEditorCommandOptions = computed(() => [
+  { label: 'Cursor', value: 'cursor' },
+  { label: 'VS Code', value: 'code' },
 ]);
 
 const tagFilterOptions = computed(() => Array.from(new Set(
@@ -327,7 +337,7 @@ async function loadBlogs() {
   blogError.value = '';
   if (!config.value.obsidianBlogDir.trim()) {
     blogs.value = [];
-    validationResult.value = { ok: true, issues: [], checkedFiles: 0 };
+    validationResult.value = emptyValidationResult();
     return;
   }
 
@@ -350,7 +360,7 @@ async function loadBlogs() {
 async function loadValidation(): Promise<BlogValidationResult> {
   validationError.value = '';
   if (!config.value.obsidianBlogDir.trim()) {
-    validationResult.value = { ok: true, issues: [], checkedFiles: 0 };
+    validationResult.value = emptyValidationResult();
     return validationResult.value;
   }
 
@@ -361,7 +371,7 @@ async function loadValidation(): Promise<BlogValidationResult> {
     return validationResult.value;
   }
   catch (error) {
-    validationResult.value = { ok: true, issues: [], checkedFiles: 0 };
+    validationResult.value = emptyValidationResult();
     validationError.value = error instanceof Error ? error.message : String(error);
     return validationResult.value;
   }
@@ -642,12 +652,12 @@ async function startSync() {
     return;
   await window.electronAPI.setConfig(plainConfig());
   const validation = await loadValidation();
-  if (!validation.ok) {
+  if (validation.errorCount > 0) {
     status.value = 'error';
     logs.value = [
       {
         id: logIdCounter++,
-        text: t('blogSync.validation.syncBlocked', { count: validation.issues.length }),
+        text: t('blogSync.validation.syncBlocked', { count: validation.errorCount }),
         level: 'error',
       },
     ];
@@ -686,11 +696,23 @@ function issueTagType(issue: BlogValidationIssue) {
   return issue.severity === 'error' ? 'error' : 'warning';
 }
 
+function emptyValidationResult(): BlogValidationResult {
+  return {
+    ok: true,
+    issues: [],
+    checkedFiles: 0,
+    obsidianCheckedFiles: 0,
+    hexoCheckedFiles: 0,
+    errorCount: 0,
+    warningCount: 0,
+  };
+}
+
 async function openValidationIssue(issue: BlogValidationIssue) {
   openingValidationIssueId.value = issue.id;
   validationError.value = '';
   try {
-    await window.electronAPI.openObsidianBlog(issue.relativePath);
+    await window.electronAPI.openBlogValidationIssue(issue.source, issue.absolutePath);
   }
   catch (error) {
     validationError.value = error instanceof Error ? error.message : String(error);
@@ -734,6 +756,14 @@ async function openValidationIssue(issue: BlogValidationIssue) {
                     {{ t('blogSync.config.browse') }}
                   </NButton>
                 </div>
+              </NFormItem>
+
+              <NFormItem :label="t('blogSync.config.hexoEditorCommand')">
+                <NSelect
+                  v-model:value="config.hexoEditorCommand"
+                  :options="hexoEditorCommandOptions"
+                  @update:value="saveConfig"
+                />
               </NFormItem>
             </NForm>
           </NCard>
@@ -818,12 +848,20 @@ async function openValidationIssue(issue: BlogValidationIssue) {
                 v-if="validationResult.ok"
                 type="success"
               >
-                {{ t('blogSync.validation.ok', { count: validationResult.checkedFiles }) }}
+                {{ t('blogSync.validation.ok', {
+                  count: validationResult.checkedFiles,
+                  obsidian: validationResult.obsidianCheckedFiles,
+                  hexo: validationResult.hexoCheckedFiles,
+                }) }}
               </NAlert>
 
               <template v-else>
-                <NAlert type="error">
-                  {{ t('blogSync.validation.failed', { count: validationResult.issues.length }) }}
+                <NAlert :type="validationResult.errorCount > 0 ? 'error' : 'warning'">
+                  {{ t('blogSync.validation.failed', {
+                    count: validationResult.issues.length,
+                    errors: validationResult.errorCount,
+                    warnings: validationResult.warningCount,
+                  }) }}
                 </NAlert>
                 <div class="validation-list">
                   <div
@@ -833,6 +871,9 @@ async function openValidationIssue(issue: BlogValidationIssue) {
                   >
                     <div class="min-w-0">
                       <div class="flex flex-wrap items-center gap-2">
+                        <NTag size="small" :type="issue.source === 'hexo' ? 'info' : 'default'" round>
+                          {{ issue.source }}
+                        </NTag>
                         <NTag size="small" :type="issueTagType(issue)" round>
                           {{ issue.field }}
                         </NTag>

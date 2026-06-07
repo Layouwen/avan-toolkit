@@ -6,6 +6,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 interface PreloadConfig {
   obsidianBlogDir: string;
   hexoBlogDir: string;
+  hexoEditorCommand: 'cursor' | 'code';
   locale: string;
   agent: {
     baseURL: string;
@@ -48,6 +49,7 @@ interface LogFilters {
 
 interface BlogValidationIssue {
   id: string;
+  source: 'obsidian' | 'hexo';
   relativePath: string;
   absolutePath: string;
   field: string;
@@ -59,6 +61,10 @@ interface BlogValidationResult {
   ok: boolean;
   issues: BlogValidationIssue[];
   checkedFiles: number;
+  obsidianCheckedFiles: number;
+  hexoCheckedFiles: number;
+  errorCount: number;
+  warningCount: number;
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -67,6 +73,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   listObsidianBlogs: () => ipcRenderer.invoke('blogs:list'),
   validateObsidianBlogs: (): Promise<BlogValidationResult> => ipcRenderer.invoke('blogs:validate'),
   openObsidianBlog: (relativePath: string) => ipcRenderer.invoke('blogs:openInEditor', relativePath),
+  openBlogValidationIssue: (source: 'obsidian' | 'hexo', absolutePath: string) =>
+    ipcRenderer.invoke('blogs:openValidationIssue', source, absolutePath),
   createObsidianBlog: (payload: CreateObsidianBlogPayload) => ipcRenderer.invoke('blogs:create', payload),
   deleteObsidianBlog: (relativePath: string) => ipcRenderer.invoke('blogs:delete', relativePath),
   renameObsidianBlogTitle: (relativePath: string, title: string) =>

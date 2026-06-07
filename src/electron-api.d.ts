@@ -3,6 +3,7 @@
 export interface AppConfig {
   obsidianBlogDir: string;
   hexoBlogDir: string;
+  hexoEditorCommand: 'cursor' | 'code';
   locale: string;
   agent: AgentConfig;
   qzone: QzoneConfig;
@@ -81,9 +82,11 @@ export interface ObsidianBlog {
 }
 
 export type BlogValidationSeverity = 'error' | 'warn';
+export type BlogValidationSource = 'obsidian' | 'hexo';
 
 export interface BlogValidationIssue {
   id: string;
+  source: BlogValidationSource;
   relativePath: string;
   absolutePath: string;
   field: string;
@@ -95,6 +98,10 @@ export interface BlogValidationResult {
   ok: boolean;
   issues: BlogValidationIssue[];
   checkedFiles: number;
+  obsidianCheckedFiles: number;
+  hexoCheckedFiles: number;
+  errorCount: number;
+  warningCount: number;
 }
 
 export interface CreateObsidianBlogPayload {
@@ -110,6 +117,7 @@ export interface ElectronAPI {
   listObsidianBlogs: () => Promise<ObsidianBlog[]>;
   validateObsidianBlogs: () => Promise<BlogValidationResult>;
   openObsidianBlog: (relativePath: string) => Promise<void>;
+  openBlogValidationIssue: (source: BlogValidationSource, absolutePath: string) => Promise<void>;
   createObsidianBlog: (payload: CreateObsidianBlogPayload) => Promise<ObsidianBlog>;
   deleteObsidianBlog: (relativePath: string) => Promise<void>;
   renameObsidianBlogTitle: (relativePath: string, title: string) => Promise<ObsidianBlog>;

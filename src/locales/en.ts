@@ -35,6 +35,7 @@ export default {
       obsidianPlaceholder: 'e.g. D:\\Obsidian\\blog',
       hexoBlogDir: 'Hexo Project Directory',
       hexoPlaceholder: 'e.g. D:\\code\\blog',
+      hexoEditorCommand: 'Open Hexo files with',
       browse: 'Browse',
     },
     action: {
@@ -85,11 +86,11 @@ export default {
       done: '── Sync complete ✓',
     },
     validation: {
-      title: 'Frontmatter Validation',
+      title: 'Frontmatter & Sync Consistency',
       refresh: 'Revalidate',
-      ok: 'Validation passed. Checked {count} synced files.',
-      failed: 'Found {count} frontmatter issues. Fix them before syncing.',
-      syncBlocked: 'Sync stopped: found {count} frontmatter issues. Fix the files listed below first.',
+      ok: 'Validation passed. Checked {count} synced files (Obsidian {obsidian}, Hexo {hexo}).',
+      failed: 'Found {count} issues: {errors} errors, {warnings} warnings.',
+      syncBlocked: 'Sync stopped: found {count} blocking errors. Fix the files listed below first.',
       open: 'Open',
     },
   },

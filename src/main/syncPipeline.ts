@@ -140,18 +140,24 @@ export async function runSyncPipeline(config: AppConfig, cb: LogCallback): Promi
   }
   log(cb, '  路径校验通过', 'success');
 
-  log(cb, '── Step 2/9  校验博客 frontmatter', 'info');
+  log(cb, '── Step 2/9  校验博客 frontmatter 与同步一致性', 'info');
   const validation = await validateObsidianBlogs(config);
-  if (!validation.ok) {
-    for (const issue of validation.issues.slice(0, 20)) {
-      log(cb, `  ${issue.relativePath} [${issue.field}] ${issue.message}`, 'error');
-    }
-    if (validation.issues.length > 20) {
-      log(cb, `  还有 ${validation.issues.length - 20} 个问题，请在底部校验结果中查看。`, 'error');
-    }
-    throw new Error(`博客 frontmatter 校验失败：${validation.issues.length} 个问题`);
+  for (const issue of validation.issues.filter(issue => issue.severity === 'warn').slice(0, 20)) {
+    log(cb, `  ${issue.source}:${issue.relativePath} [${issue.field}] ${issue.message}`, 'warn');
   }
-  log(cb, `  校验通过，共检查 ${validation.checkedFiles} 个文件`, 'success');
+  if (validation.warningCount > 20) {
+    log(cb, `  还有 ${validation.warningCount - 20} 个警告，请在底部校验结果中查看。`, 'warn');
+  }
+  if (validation.errorCount > 0) {
+    for (const issue of validation.issues.filter(issue => issue.severity === 'error').slice(0, 20)) {
+      log(cb, `  ${issue.source}:${issue.relativePath} [${issue.field}] ${issue.message}`, 'error');
+    }
+    if (validation.errorCount > 20) {
+      log(cb, `  还有 ${validation.errorCount - 20} 个错误，请在底部校验结果中查看。`, 'error');
+    }
+    throw new Error(`博客 frontmatter 校验失败：${validation.errorCount} 个错误`);
+  }
+  log(cb, `  校验通过，共检查 ${validation.checkedFiles} 个文件，警告 ${validation.warningCount} 个`, 'success');
 
   // Step 2 & 3: Copy article and summary markdown files
   log(cb, '── Step 3/9  复制 article 文章', 'info');
