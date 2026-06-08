@@ -1,13 +1,12 @@
 import type { AppConfig } from './configManager';
 import path from 'node:path';
-import process from 'node:process';
 import { BrowserWindow, ipcMain, screen } from 'electron';
 import { getConfig } from './configManager';
 
 let screensaverWindow: BrowserWindow | null = null;
 let triggerTimer: NodeJS.Timeout | null = null;
 
-function createScreensaverWindow(config: AppConfig['screensaver']) {
+function createScreensaverWindow(_config: AppConfig['screensaver']) {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
 
@@ -22,23 +21,22 @@ function createScreensaverWindow(config: AppConfig['screensaver']) {
     resizable: false,
     fullscreen: true,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
     },
   });
 
-  // 加载独立的屏保 HTML 文件
-  let screensaverHtmlPath: string;
+  // 加载专门的 Vue 屏保入口
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    // 开发模式
-    screensaverHtmlPath = path.join(process.cwd(), 'screensaver.html');
+    const url = new URL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    url.pathname = '/screensaver-vue.html';
+    screensaverWindow.loadURL(url.toString());
   }
   else {
-    // 生产模式
-    screensaverHtmlPath = path.join(process.resourcesPath, 'screensaver.html');
+    const indexPath = path.join(__dirname, `../renderer/screensaver_window/index.html`);
+    screensaverWindow.loadFile(indexPath);
   }
-  screensaverWindow.loadFile(screensaverHtmlPath);
 
   // 开发模式下打开 DevTools 方便调试
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
@@ -47,11 +45,6 @@ function createScreensaverWindow(config: AppConfig['screensaver']) {
 
   screensaverWindow.on('closed', () => {
     screensaverWindow = null;
-  });
-
-  // 监听屏保页面的配置请求
-  ipcMain.once('screensaver:request-config', () => {
-    screensaverWindow?.webContents.send('screensaver:config', config);
   });
 
   // 监听屏保页面的关闭请求

@@ -41,6 +41,11 @@ const config: ForgeConfig = {
           name: 'main_window',
           config: 'vite.renderer.config.mts',
         },
+        {
+          name: 'screensaver_window',
+          config: 'vite.renderer.config.mts',
+          entry: 'screensaver-vue.html',
+        },
       ],
     }),
     // Fuses are used to enable/disable various Electron functionality
