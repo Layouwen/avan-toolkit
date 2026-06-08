@@ -1,9 +1,9 @@
 # avan-toolkit
 
-[![License](<LICENSE_BADGE_URL>)](<LICENSE_LINK>)
-[![Release](<RELEASE_BADGE_URL>)](<RELEASES_PAGE_URL>)
-[![CI](<CI_BADGE_URL>)](<CI_WORKFLOW_URL>)
-[![Downloads](<DOWNLOAD_BADGE_URL>)](<RELEASES_PAGE_URL>)
+[![License](LICENSE_BADGE_URL)](LICENSE_LINK)
+[![Release](RELEASE_BADGE_URL)](RELEASES_PAGE_URL)
+[![CI](CI_BADGE_URL)](CI_WORKFLOW_URL)
+[![Downloads](DOWNLOAD_BADGE_URL)](RELEASES_PAGE_URL)
 
 A cross-platform desktop toolkit built with Electron + Vue 3 for developers and creators, focused on high-frequency and automatable workflows.
 
@@ -58,7 +58,7 @@ avan-toolkit turns scattered scripts into one desktop entry point.
 ### 1. One-click Blog Sync and Publish
 
 - Reads markdown files from your Obsidian blog directory.
-- Copies files into Hexo source/_posts folders.
+- Copies files into Hexo source/\_posts folders.
 - Removes indexed filename prefixes (for example, 001-title.md -> title.md).
 - Auto-generates missing frontmatter uuid and writes back to source file.
 - Runs git add, git commit, and git push automatically.
@@ -79,9 +79,9 @@ avan-toolkit turns scattered scripts into one desktop entry point.
 
 > Put screenshots in docs/images or another stable path, then replace placeholders below.
 
-- Home: ![Home](<SCREENSHOT_HOME_URL>)
-- Blog Sync Config: ![BlogSync Config](<SCREENSHOT_SYNC_CONFIG_URL>)
-- Blog Sync Logs: ![BlogSync Logs](<SCREENSHOT_SYNC_LOGS_URL>)
+- Home: ![Home](SCREENSHOT_HOME_URL)
+- Blog Sync Config: ![BlogSync Config](SCREENSHOT_SYNC_CONFIG_URL)
+- Blog Sync Logs: ![BlogSync Logs](SCREENSHOT_SYNC_LOGS_URL)
 
 ## Quick Start
 

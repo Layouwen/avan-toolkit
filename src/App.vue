@@ -15,11 +15,14 @@ const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
 
+const isScreensaverWindow = computed(() => route.path === '/screensaver-window');
+
 const menuOptions = computed(() => [
   { label: t('nav.home'), key: '/' },
   { label: t('nav.blogSync'), key: '/sync' },
   { label: t('nav.qzone'), key: '/qzone' },
   { label: t('nav.agent'), key: '/agent' },
+  { label: t('nav.screensaver'), key: '/screensaver' },
   { label: t('nav.logs'), key: '/logs' },
   { label: t('nav.about'), key: '/about' },
 ]);
@@ -43,7 +46,12 @@ onMounted(async () => {
 <template>
   <NConfigProvider :theme="darkTheme">
     <NMessageProvider>
-      <div class="h-screen flex flex-col">
+      <!-- 屏保窗口 - 不显示导航 -->
+      <div v-if="isScreensaverWindow" class="h-screen w-screen overflow-hidden">
+        <router-view />
+      </div>
+      <!-- 正常应用窗口 -->
+      <div v-else class="h-screen flex flex-col">
         <NLayoutHeader bordered class="shrink-0">
           <NSpace class="px-4 py-2" align="center" justify="space-between">
             <div class="text-sm font-medium text-[#e5e7eb]">

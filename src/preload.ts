@@ -19,6 +19,14 @@ interface PreloadConfig {
     qqPassword: string;
     playwrightProfileDir: string;
   };
+  screensaver: {
+    enabled: boolean;
+    triggerIntervalMinutes: number;
+    countdownSeconds: number;
+    backgroundType: 'color' | 'image';
+    backgroundColor: string;
+    backgroundImagePath: string;
+  };
 }
 
 interface CreateObsidianBlogPayload {
@@ -112,4 +120,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   publishQzoneShuoshuo: (content: string) => ipcRenderer.invoke('qzone:publishShuoshuo', content),
   listQzoneShuoshuo: () => ipcRenderer.invoke('qzone:listShuoshuo'),
   loadMoreQzoneShuoshuo: () => ipcRenderer.invoke('qzone:loadMoreShuoshuo'),
+  triggerScreensaver: () => ipcRenderer.invoke('screensaver:trigger'),
+  closeScreensaver: () => ipcRenderer.invoke('screensaver:close'),
+  getScreensaverConfig: () => ipcRenderer.invoke('screensaver:getConfig'),
+  onScreensaverConfig: (cb: (config: PreloadConfig['screensaver']) => void) => {
+    ipcRenderer.on('screensaver:config', (_event, config) => cb(config));
+  },
+  offScreensaverConfig: () => {
+    ipcRenderer.removeAllListeners('screensaver:config');
+  },
+  selectImageFile: () => ipcRenderer.invoke('dialog:selectImage'),
 });

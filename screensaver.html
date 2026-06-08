@@ -1,0 +1,262 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Eye Saver</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      #screensaver {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: rgba(255, 255, 255, 0.9);
+        background-color: #1a3a2a;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+      .time-display {
+        font-size: 120px;
+        font-weight: 300;
+        letter-spacing: 4px;
+      }
+      .date-display {
+        font-size: 24px;
+        opacity: 0.8;
+        margin-top: 10px;
+      }
+      .countdown-display {
+        font-size: 80px;
+        font-weight: 200;
+        margin-top: 40px;
+        transition: all 0.3s;
+      }
+      .countdown-display.finished {
+        font-size: 32px;
+        opacity: 0.7;
+      }
+      button {
+        margin-top: 30px;
+        padding: 12px 32px;
+        font-size: 18px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+        transition: background 0.2s;
+      }
+      button:hover {
+        background: rgba(255, 255, 255, 0.25);
+      }
+      button.primary {
+        background: #18a058;
+      }
+      button.primary:hover {
+        background: #36ad6a;
+      }
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      .modal {
+        background: #1f1f1f;
+        padding: 30px;
+        border-radius: 12px;
+        max-width: 400px;
+        width: 90%;
+      }
+      .modal-title {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: white;
+      }
+      .modal-message {
+        font-size: 16px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-bottom: 24px;
+        line-height: 1.6;
+      }
+      .modal-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="screensaver">
+      <div class="time-display" id="time"></div>
+      <div class="date-display" id="date"></div>
+      <div class="countdown-display" id="countdown">30s</div>
+      <button id="closeBtn">关闭</button>
+    </div>
+
+    <div class="modal-overlay" id="modal" style="display: none">
+      <div class="modal">
+        <div class="modal-title" id="modalTitle">护眼提醒</div>
+        <div class="modal-message" id="modalMessage"></div>
+        <div class="modal-buttons">
+          <button id="cancelBtn">继续休息</button>
+          <button class="primary" id="confirmBtn">确认关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const { ipcRenderer } = require('electron');
+
+      const screensaverEl = document.getElementById('screensaver');
+      const timeEl = document.getElementById('time');
+      const dateEl = document.getElementById('date');
+      const countdownEl = document.getElementById('countdown');
+      const closeBtn = document.getElementById('closeBtn');
+      const modal = document.getElementById('modal');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalMessage = document.getElementById('modalMessage');
+      const cancelBtn = document.getElementById('cancelBtn');
+      const confirmBtn = document.getElementById('confirmBtn');
+
+      let config = {
+        countdownSeconds: 30,
+        backgroundType: 'color',
+        backgroundColor: '#1a3a2a',
+        backgroundImagePath: '',
+      };
+      let countdown = 30;
+      let countdownFinished = false;
+      let countdownInterval = null;
+      let timeInterval = null;
+
+      const confirmMessages = [
+        '眼睛是心灵的窗户，让它休息一下吧！',
+        '长时间看屏幕，记得眨眨眼~',
+        '站起来活动一下，看看远处！',
+        '休息是为了更好地继续，确认关闭吗？',
+        '给眼睛放个小假，看看窗外的风景~',
+      ];
+
+      function updateTime() {
+        const now = new Date();
+        timeEl.textContent = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        dateEl.textContent = now.toLocaleDateString('zh-CN', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          weekday: 'long',
+        });
+      }
+
+      function applyConfig(cfg) {
+        config = cfg;
+        countdown = cfg.countdownSeconds;
+        countdownFinished = false;
+
+        if (cfg.backgroundType === 'color') {
+          screensaverEl.style.backgroundColor = cfg.backgroundColor;
+          screensaverEl.style.backgroundImage = '';
+        } else if (cfg.backgroundImagePath) {
+          screensaverEl.style.backgroundColor = '';
+          screensaverEl.style.backgroundImage = `url('file://${cfg.backgroundImagePath}')`;
+        }
+
+        updateCountdownDisplay();
+      }
+
+      function updateCountdownDisplay() {
+        if (countdownFinished) {
+          countdownEl.textContent = '关闭';
+          countdownEl.classList.add('finished');
+          closeBtn.style.display = 'inline-block';
+          closeBtn.className = 'primary';
+        } else {
+          countdownEl.textContent = `${countdown}s`;
+          countdownEl.classList.remove('finished');
+          closeBtn.style.display = 'inline-block';
+          closeBtn.className = '';
+        }
+      }
+
+      function startCountdown() {
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownInterval = setInterval(() => {
+          if (countdown > 0) {
+            countdown--;
+            updateCountdownDisplay();
+          } else {
+            countdownFinished = true;
+            updateCountdownDisplay();
+            if (countdownInterval) {
+              clearInterval(countdownInterval);
+              countdownInterval = null;
+            }
+          }
+        }, 1000);
+      }
+
+      function tryClose() {
+        if (countdownFinished) {
+          ipcRenderer.send('screensaver:request-close');
+        } else {
+          const randomMessage = confirmMessages[Math.floor(Math.random() * confirmMessages.length)];
+          modalMessage.textContent = randomMessage;
+          modal.style.display = 'flex';
+        }
+      }
+
+      // 事件监听
+      closeBtn.addEventListener('click', tryClose);
+
+      cancelBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+      });
+
+      confirmBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+        ipcRenderer.send('screensaver:request-close');
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          tryClose();
+        }
+      });
+
+      // IPC 监听
+      ipcRenderer.on('screensaver:config', (_, cfg) => {
+        applyConfig(cfg);
+        startCountdown();
+      });
+
+      // 初始化
+      updateTime();
+      timeInterval = setInterval(updateTime, 1000);
+
+      // 向主进程请求配置
+      ipcRenderer.send('screensaver:request-config');
+    </script>
+  </body>
+</html>

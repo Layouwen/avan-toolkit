@@ -1,5 +1,14 @@
 /// <reference types="vite/client" />
 
+export interface ScreensaverConfig {
+  enabled: boolean;
+  triggerIntervalMinutes: number;
+  countdownSeconds: number;
+  backgroundType: 'color' | 'image';
+  backgroundColor: string;
+  backgroundImagePath: string;
+}
+
 export interface AppConfig {
   obsidianBlogDir: string;
   hexoBlogDir: string;
@@ -7,6 +16,7 @@ export interface AppConfig {
   locale: string;
   agent: AgentConfig;
   qzone: QzoneConfig;
+  screensaver: ScreensaverConfig;
 }
 
 export interface AgentConfig {
@@ -126,6 +136,7 @@ export interface ElectronAPI {
   renameObsidianBlogTitle: (relativePath: string, title: string) => Promise<ObsidianBlog>;
   renameObsidianBlogFileName: (relativePath: string, fileName: string) => Promise<ObsidianBlog>;
   selectDirectory: () => Promise<string | null>;
+  selectImageFile: () => Promise<string | null>;
   startSync: () => Promise<void>;
   onSyncLog: (cb: (message: string, level: LogLevel) => void) => void;
   offSyncLog: () => void;
@@ -141,6 +152,11 @@ export interface ElectronAPI {
   publishQzoneShuoshuo: (content: string) => Promise<QzoneAutomationResult>;
   listQzoneShuoshuo: () => Promise<QzoneListResult>;
   loadMoreQzoneShuoshuo: () => Promise<QzoneListResult>;
+  triggerScreensaver: () => Promise<void>;
+  closeScreensaver: () => Promise<void>;
+  getScreensaverConfig: () => Promise<ScreensaverConfig>;
+  onScreensaverConfig: (cb: (config: ScreensaverConfig) => void) => void;
+  offScreensaverConfig: () => void;
 }
 
 declare global {

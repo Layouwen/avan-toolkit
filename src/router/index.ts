@@ -27,6 +27,14 @@ const router = createRouter({
       path: '/logs',
       component: () => import('../views/Logs.vue'),
     },
+    {
+      path: '/screensaver',
+      component: () => import('../views/Screensaver.vue'),
+    },
+    {
+      path: '/screensaver-window',
+      component: () => import('../views/ScreensaverWindow.vue'),
+    },
   ],
 });
 

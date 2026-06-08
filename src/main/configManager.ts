@@ -18,6 +18,14 @@ export interface AppConfig {
     qqPassword: string;
     playwrightProfileDir: string;
   };
+  screensaver: {
+    enabled: boolean;
+    triggerIntervalMinutes: number;
+    countdownSeconds: number;
+    backgroundType: 'color' | 'image';
+    backgroundColor: string;
+    backgroundImagePath: string;
+  };
 }
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
@@ -40,6 +48,14 @@ const DEFAULT_CONFIG: AppConfig = {
     qqPassword: '',
     playwrightProfileDir: DEFAULT_QZONE_PROFILE_DIR,
   },
+  screensaver: {
+    enabled: true,
+    triggerIntervalMinutes: 45,
+    countdownSeconds: 30,
+    backgroundType: 'color',
+    backgroundColor: '#1a3a2a',
+    backgroundImagePath: '',
+  },
 };
 
 export async function getConfig(): Promise<AppConfig> {
@@ -56,6 +72,10 @@ export async function getConfig(): Promise<AppConfig> {
       qzone: {
         ...DEFAULT_CONFIG.qzone,
         ...parsed.qzone,
+      },
+      screensaver: {
+        ...DEFAULT_CONFIG.screensaver,
+        ...parsed.screensaver,
       },
     };
   }

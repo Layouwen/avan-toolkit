@@ -219,13 +219,13 @@ page.goto('https://qzone.qq.com/', {
 `focusShuoshuoEditor(page, steps)` 先直接查找输入区域：
 
 ```ts
-frame.locator('.qz-poster-editor-cont .qz-inputer [contenteditable="true"]:visible')
-frame.locator('.qz-poster-editor-cont [id$="_substitutor_content"]:visible')
-frame.locator('.qz-poster-editor-cont [id$="_content_content"]:visible')
-frame.locator('textarea')
-frame.locator('[contenteditable="true"]')
-frame.locator('[role="textbox"]')
-frame.getByPlaceholder(/说点什么|发表|分享|动态|心情|what/i)
+frame.locator('.qz-poster-editor-cont .qz-inputer [contenteditable="true"]:visible');
+frame.locator('.qz-poster-editor-cont [id$="_substitutor_content"]:visible');
+frame.locator('.qz-poster-editor-cont [id$="_content_content"]:visible');
+frame.locator('textarea');
+frame.locator('[contenteditable="true"]');
+frame.locator('[role="textbox"]');
+frame.getByPlaceholder(/说点什么|发表|分享|动态|心情|what/i);
 ```
 
 根据手动登录后观察到的 QQ 空间 DOM，优先使用 `.qz-poster-editor-cont` 容器内的可见 `contenteditable`。这样可以避开评论框、搜索框、其他模块编辑器等非发表区域。
@@ -233,9 +233,9 @@ frame.getByPlaceholder(/说点什么|发表|分享|动态|心情|what/i)
 如果直接找不到，再尝试点击入口：
 
 ```ts
-frame.getByText(/说说|写说说|发表说说|分享新鲜事/)
-frame.locator('a:has-text("说说")')
-frame.locator('button:has-text("说说")')
+frame.getByText(/说说|写说说|发表说说|分享新鲜事/);
+frame.locator('a:has-text("说说")');
+frame.locator('button:has-text("说说")');
 ```
 
 然后再次查找输入区域。
@@ -245,19 +245,19 @@ frame.locator('button:has-text("说说")')
 `fillEditor(editor, content)` 优先使用：
 
 ```ts
-editor.click()
-editor.fill(content)
+editor.click();
+editor.fill(content);
 ```
 
 如果目标不是标准 input/textarea，Playwright `fill` 可能失败，此时降级为：
 
 ```ts
-editor.click()
+editor.click();
 editor.evaluate((node) => {
   // 清空 value 或 textContent
   // 派发 input/change 事件
-})
-editor.pressSequentially(content)
+});
+editor.pressSequentially(content);
 ```
 
 降级路径使用 `pressSequentially`，目的是让 QQ 空间旧版 contenteditable 编辑器收到更接近真实键盘输入的事件。
@@ -267,13 +267,13 @@ editor.pressSequentially(content)
 发表按钮候选：
 
 ```ts
-frame.locator('.qz-poster-ft .btn-post:visible')
-frame.locator('[data-hottag="MOODPOSTER.POST"]:visible')
-frame.locator('.op .btn-post:visible')
-frame.getByRole('button', { name: /发表|发布|发送|post|publish/i })
-frame.locator('button:has-text("发表")')
-frame.locator('a:has-text("发表")')
-frame.locator('[role="button"]:has-text("发表")')
+frame.locator('.qz-poster-ft .btn-post:visible');
+frame.locator('[data-hottag="MOODPOSTER.POST"]:visible');
+frame.locator('.op .btn-post:visible');
+frame.getByRole('button', { name: /发表|发布|发送|post|publish/i });
+frame.locator('button:has-text("发表")');
+frame.locator('a:has-text("发表")');
+frame.locator('[role="button"]:has-text("发表")');
 ```
 
 根据 QQ 空间 DOM，发表按钮位于 `.qz-poster-ft` 下，核心按钮是 `.btn-post`，并带有 `data-hottag="MOODPOSTER.POST"`。
@@ -281,7 +281,7 @@ frame.locator('[role="button"]:has-text("发表")')
 找到后调用：
 
 ```ts
-publishButton.click()
+publishButton.click();
 ```
 
 ## 列表展示流程
@@ -289,7 +289,7 @@ publishButton.click()
 前端点击“加载列表”后调用：
 
 ```ts
-window.electronAPI.listQzoneShuoshuo()
+window.electronAPI.listQzoneShuoshuo();
 ```
 
 主进程返回：
@@ -325,9 +325,9 @@ interface QzoneListResult extends QzoneAutomationResult {
 旧实现中最可能原因是 `frameTextCandidates` 太宽泛：
 
 ```ts
-frame.locator('textarea')
-frame.locator('[contenteditable="true"]')
-frame.locator('[role="textbox"]')
+frame.locator('textarea');
+frame.locator('[contenteditable="true"]');
+frame.locator('[role="textbox"]');
 ```
 
 这会导致 Playwright 找到页面中第一个可见的 `textarea`、`contenteditable` 或 textbox，而这个元素可能不是 QQ 空间顶部的说说发表框。它可能是：
@@ -440,7 +440,7 @@ external: [
   'playwright',
   'playwright-core',
   'fsevents',
-]
+];
 ```
 
 这表示运行时由 Node/Electron 加载这些包，而不是由 Rollup 打包解析它们。

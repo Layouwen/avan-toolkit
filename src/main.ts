@@ -22,6 +22,7 @@ import {
   subscribeLogs,
 } from './main/logger';
 import { closeQzoneSession, listQzoneShuoshuo, loadMoreQzoneShuoshuo, publishQzoneShuoshuo, testQzoneLogin } from './main/qzoneAutomation';
+import { initializeScreensaver, updateScreensaverConfig } from './main/screensaverManager';
 import { runSyncPipeline } from './main/syncPipeline';
 
 interface AgentInvokeConfig {
@@ -137,7 +138,10 @@ function createWindow() {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
+app.on('ready', () => {
+  createWindow();
+  initializeScreensaver();
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
@@ -168,7 +172,10 @@ ipcMain.handle('shell:openExternal', (_event, url: string) => shell.openExternal
 
 ipcMain.handle('config:get', () => getConfig());
 
-ipcMain.handle('config:set', (_event, config) => setConfig(config));
+ipcMain.handle('config:set', (_event, config) => {
+  void setConfig(config);
+  updateScreensaverConfig();
+});
 
 ipcMain.handle('blogs:list', async () => {
   const config = await getConfig();
@@ -282,6 +289,19 @@ ipcMain.handle('dialog:selectDir', async () => {
     return null;
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+
+ipcMain.handle('dialog:selectImage', async () => {
+  if (!mainWindow)
+    return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [
+      { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
   });
   return result.canceled ? null : result.filePaths[0];
 });

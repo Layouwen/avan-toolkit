@@ -5,4 +5,4 @@ export default antfu({
     semi: true,
   },
   formatters: true,
-})
+});
