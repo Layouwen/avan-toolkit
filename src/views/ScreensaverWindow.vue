@@ -161,8 +161,8 @@ const backgroundStyle = computed(() => {
       </div>
 
       <!-- 简单的对话框实现 -->
-      <div v-if="showConfirmDialog" class="modal-overlay" @click.self="cancelClose">
-        <div class="modal">
+      <div v-if="showConfirmDialog" class="modal-overlay" @click.stop="cancelClose">
+        <div class="modal" @click.stop>
           <div class="modal-title">
             {{ t('screensaverWindow.confirmTitle') }}
           </div>
