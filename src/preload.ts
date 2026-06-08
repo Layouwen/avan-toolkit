@@ -47,6 +47,13 @@ interface AppLogEntry {
   sensitive?: boolean;
 }
 
+interface ScreensaverStatus {
+  enabled: boolean;
+  intervalSeconds: number;
+  nextTriggerAt: number | null;
+  remainingSeconds: number;
+}
+
 interface LogFilters {
   module?: AppLogEntry['module'];
   level?: AppLogEntry['level'];
@@ -123,6 +130,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   triggerScreensaver: () => ipcRenderer.invoke('screensaver:trigger'),
   closeScreensaver: () => ipcRenderer.invoke('screensaver:close'),
   getScreensaverConfig: () => ipcRenderer.invoke('screensaver:getConfig'),
+  getScreensaverStatus: (): Promise<ScreensaverStatus> => ipcRenderer.invoke('screensaver:getStatus'),
   onScreensaverConfig: (cb: (config: PreloadConfig['screensaver']) => void) => {
     ipcRenderer.on('screensaver:config', (_event, config) => cb(config));
   },

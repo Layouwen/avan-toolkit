@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import FlipCountdown from '../components/FlipCountdown.vue';
 
 const { t, tm } = useI18n();
 
 const config = ref<any>(null);
 const currentTime = ref('');
 const currentDate = ref('');
+const currentWeekday = ref('');
 const countdown = ref(0);
 const countdownFinished = ref(false);
 const showConfirmDialog = ref(false);
@@ -18,7 +20,8 @@ let countdownInterval: number | null = null;
 function updateTime() {
   const now = new Date();
   currentTime.value = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  currentDate.value = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+  currentDate.value = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+  currentWeekday.value = now.toLocaleDateString('zh-CN', { weekday: 'long' });
 }
 
 function getRandomConfirmMessage() {
@@ -29,19 +32,21 @@ function getRandomConfirmMessage() {
 function startCountdown() {
   if (!config.value)
     return;
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+  }
   countdown.value = config.value.countdownSeconds;
   countdownFinished.value = false;
 
   countdownInterval = window.setInterval(() => {
-    if (countdown.value > 0) {
-      countdown.value--;
-    }
-    else {
+    countdown.value = Math.max(0, countdown.value - 1);
+    if (countdown.value <= 0) {
       countdownFinished.value = true;
       if (countdownInterval) {
         clearInterval(countdownInterval);
         countdownInterval = null;
       }
+      closeScreensaver();
     }
   }, 1000);
 }
@@ -130,30 +135,29 @@ const backgroundStyle = computed(() => {
       :style="backgroundStyle"
       @click="tryClose"
     >
-      <div class="content-wrapper">
-        <div class="time-display">
-          {{ currentTime }}
+      <div class="page-stage">
+        <div class="content-wrapper countdown-page">
+          <div class="time-meta">
+            <span>{{ currentWeekday }}</span>
+            <span>{{ currentDate }}</span>
+          </div>
+
+          <div class="clock-stage">
+            <FlipCountdown :seconds="countdown" :finished="countdownFinished" fill />
+          </div>
+
+          <div class="time-meta current-time">
+            {{ currentTime }}
+          </div>
+
+          <button
+            class="close-btn"
+            :class="{ primary: countdownFinished }"
+            @click.stop="tryClose"
+          >
+            {{ t('screensaverWindow.close') }}
+          </button>
         </div>
-        <div class="date-display">
-          {{ currentDate }}
-        </div>
-        <div class="countdown-display" :class="{ finished: countdownFinished }">
-          {{ countdownFinished ? t('screensaverWindow.close') : `${countdown}s` }}
-        </div>
-        <button
-          v-if="countdownFinished"
-          class="close-btn primary"
-          @click="tryClose"
-        >
-          {{ t('screensaverWindow.close') }}
-        </button>
-        <button
-          v-else
-          class="close-btn"
-          @click="tryClose"
-        >
-          {{ t('screensaverWindow.close') }}
-        </button>
       </div>
 
       <!-- 简单的对话框实现 -->
@@ -213,40 +217,56 @@ html,
   z-index: 9999;
 }
 
+.page-stage {
+  width: 100vw;
+  height: 100vh;
+  padding: clamp(24px, 5vh, 72px) clamp(24px, 5vw, 96px);
+  display: grid;
+  place-items: center;
+}
+
 .content-wrapper {
+  width: 100%;
+  height: 100%;
   text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: clamp(16px, 3vh, 32px);
   align-items: center;
+  justify-content: center;
 }
 
-.time-display {
-  font-size: 120px;
+.countdown-page {
+  gap: clamp(18px, 3vh, 36px);
+}
+
+.clock-stage {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+.time-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 18px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: clamp(15px, 1.8vw, 20px);
   font-weight: 300;
-  letter-spacing: 4px;
+  letter-spacing: 0;
+  line-height: 1.4;
 }
 
-.date-display {
-  font-size: 24px;
-  opacity: 0.8;
-}
-
-.countdown-display {
-  font-size: 80px;
-  font-weight: 200;
-  margin-top: 40px;
-  transition: all 0.3s;
-}
-
-.countdown-display.finished {
-  font-size: 32px;
-  opacity: 0.7;
+.current-time {
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(18px, 2.2vw, 26px);
+  color: rgba(255, 255, 255, 0.76);
 }
 
 /* 按钮样式 - 参考 HTML 版本 */
 .close-btn {
-  margin-top: 30px;
+  margin-top: 0;
   padding: 12px 32px;
   font-size: 18px;
   border: none;
@@ -267,6 +287,12 @@ html,
 
 .close-btn.primary:hover {
   background: #36ad6a;
+}
+
+@media (max-width: 640px) {
+  .page-stage {
+    padding: 20px 16px;
+  }
 }
 
 /* 对话框样式 - 完全参考 HTML 版本 */

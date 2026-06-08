@@ -172,8 +172,8 @@ ipcMain.handle('shell:openExternal', (_event, url: string) => shell.openExternal
 
 ipcMain.handle('config:get', () => getConfig());
 
-ipcMain.handle('config:set', (_event, config) => {
-  void setConfig(config);
+ipcMain.handle('config:set', async (_event, config) => {
+  await setConfig(config);
   updateScreensaverConfig();
 });
 

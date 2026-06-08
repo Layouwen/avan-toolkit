@@ -5,6 +5,14 @@ import { getConfig } from './configManager';
 
 let screensaverWindow: BrowserWindow | null = null;
 let triggerTimer: NodeJS.Timeout | null = null;
+let nextTriggerAt: number | null = null;
+
+export interface ScreensaverStatus {
+  enabled: boolean;
+  intervalSeconds: number;
+  nextTriggerAt: number | null;
+  remainingSeconds: number;
+}
 
 function createScreensaverWindow(_config: AppConfig['screensaver']) {
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -53,17 +61,21 @@ function createScreensaverWindow(_config: AppConfig['screensaver']) {
   });
 }
 
-function startTriggerTimer() {
+function scheduleTriggerTimer(config: AppConfig) {
   stopTriggerTimer();
 
-  void getConfig().then((config) => {
-    if (config.screensaver.enabled && config.screensaver.triggerIntervalMinutes > 0) {
-      const intervalMs = config.screensaver.triggerIntervalMinutes * 60 * 1000;
-      triggerTimer = setInterval(() => {
-        triggerScreensaver();
-      }, intervalMs);
-    }
-  });
+  if (config.screensaver.enabled && config.screensaver.triggerIntervalMinutes > 0) {
+    const intervalMs = config.screensaver.triggerIntervalMinutes * 60 * 1000;
+    nextTriggerAt = Date.now() + intervalMs;
+    triggerTimer = setInterval(() => {
+      nextTriggerAt = Date.now() + intervalMs;
+      triggerScreensaver();
+    }, intervalMs);
+  }
+}
+
+function startTriggerTimer() {
+  void getConfig().then(scheduleTriggerTimer);
 }
 
 function stopTriggerTimer() {
@@ -71,6 +83,7 @@ function stopTriggerTimer() {
     clearInterval(triggerTimer);
     triggerTimer = null;
   }
+  nextTriggerAt = null;
 }
 
 export function triggerScreensaver() {
@@ -93,10 +106,32 @@ export function updateScreensaverConfig() {
   startTriggerTimer();
 }
 
+export async function getScreensaverStatus(): Promise<ScreensaverStatus> {
+  const config = await getConfig();
+  const enabled = config.screensaver.enabled && config.screensaver.triggerIntervalMinutes > 0;
+  const intervalSeconds = config.screensaver.triggerIntervalMinutes * 60;
+
+  if (enabled && !triggerTimer) {
+    scheduleTriggerTimer(config);
+  }
+
+  const remainingSeconds = enabled && nextTriggerAt
+    ? Math.max(0, Math.ceil((nextTriggerAt - Date.now()) / 1000))
+    : 0;
+
+  return {
+    enabled,
+    intervalSeconds,
+    nextTriggerAt: enabled ? nextTriggerAt : null,
+    remainingSeconds,
+  };
+}
+
 export function initializeScreensaver() {
   startTriggerTimer();
 
   ipcMain.handle('screensaver:trigger', () => triggerScreensaver());
   ipcMain.handle('screensaver:close', () => closeScreensaver());
   ipcMain.handle('screensaver:getConfig', () => getConfig().then(c => c.screensaver));
+  ipcMain.handle('screensaver:getStatus', () => getScreensaverStatus());
 }

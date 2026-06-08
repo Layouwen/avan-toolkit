@@ -9,6 +9,13 @@ export interface ScreensaverConfig {
   backgroundImagePath: string;
 }
 
+export interface ScreensaverStatus {
+  enabled: boolean;
+  intervalSeconds: number;
+  nextTriggerAt: number | null;
+  remainingSeconds: number;
+}
+
 export interface AppConfig {
   obsidianBlogDir: string;
   hexoBlogDir: string;
@@ -155,6 +162,7 @@ export interface ElectronAPI {
   triggerScreensaver: () => Promise<void>;
   closeScreensaver: () => Promise<void>;
   getScreensaverConfig: () => Promise<ScreensaverConfig>;
+  getScreensaverStatus: () => Promise<ScreensaverStatus>;
   onScreensaverConfig: (cb: (config: ScreensaverConfig) => void) => void;
   offScreensaverConfig: () => void;
 }
