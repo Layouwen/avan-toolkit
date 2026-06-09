@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { NButton, NModal, NSpace } from 'naive-ui';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import FlipCountdown from '../components/FlipCountdown.vue';
@@ -150,35 +151,44 @@ const backgroundStyle = computed(() => {
             {{ currentTime }}
           </div>
 
-          <button
+          <NButton
             class="close-btn"
-            :class="{ primary: countdownFinished }"
+            :type="countdownFinished ? 'primary' : 'default'"
+            size="large"
+            :ghost="!countdownFinished"
             @click.stop="tryClose"
           >
             {{ t('screensaverWindow.close') }}
-          </button>
+          </NButton>
         </div>
       </div>
 
-      <!-- 简单的对话框实现 -->
-      <div v-if="showConfirmDialog" class="modal-overlay" @click.stop="cancelClose">
-        <div class="modal" @click.stop>
-          <div class="modal-title">
-            {{ t('screensaverWindow.confirmTitle') }}
-          </div>
+      <NModal
+        v-model:show="showConfirmDialog"
+        preset="card"
+        :title="t('screensaverWindow.confirmTitle')"
+        :bordered="false"
+        :mask-closable="false"
+        :z-index="10000"
+        style="width: min(400px, 90vw)"
+        @click.stop
+      >
+        <template #default>
           <div class="modal-message">
             {{ confirmMessage }}
           </div>
-          <div class="modal-buttons">
-            <button class="modal-btn" @click="cancelClose">
+        </template>
+        <template #footer>
+          <NSpace justify="end">
+            <NButton @click="cancelClose">
               {{ t('screensaverWindow.cancel') }}
-            </button>
-            <button class="modal-btn primary" @click="confirmClose">
+            </NButton>
+            <NButton type="primary" @click="confirmClose">
               {{ t('screensaverWindow.confirm') }}
-            </button>
-          </div>
-        </div>
-      </div>
+            </NButton>
+          </NSpace>
+        </template>
+      </NModal>
     </div>
   </div>
 </template>
@@ -264,29 +274,9 @@ html,
   color: rgba(255, 255, 255, 0.76);
 }
 
-/* 按钮样式 - 参考 HTML 版本 */
 .close-btn {
   margin-top: 0;
-  padding: 12px 32px;
-  font-size: 18px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  transition: background 0.2s;
-}
-
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-.close-btn.primary {
-  background: #18a058;
-}
-
-.close-btn.primary:hover {
-  background: #36ad6a;
+  min-width: 128px;
 }
 
 @media (max-width: 640px) {
@@ -295,68 +285,9 @@ html,
   }
 }
 
-/* 对话框样式 - 完全参考 HTML 版本 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-}
-
-.modal {
-  background: #1f1f1f;
-  padding: 30px;
-  border-radius: 12px;
-  max-width: 400px;
-  width: 90%;
-}
-
-.modal-title {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  color: white;
-}
-
 .modal-message {
   font-size: 16px;
   color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 24px;
   line-height: 1.6;
-}
-
-.modal-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.modal-btn {
-  padding: 10px 24px;
-  font-size: 16px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  transition: background 0.2s;
-}
-
-.modal-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-.modal-btn.primary {
-  background: #18a058;
-}
-
-.modal-btn.primary:hover {
-  background: #36ad6a;
 }
 </style>
