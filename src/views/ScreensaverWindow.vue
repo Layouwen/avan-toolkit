@@ -47,7 +47,7 @@ function startCountdown() {
         clearInterval(countdownInterval);
         countdownInterval = null;
       }
-      closeScreensaver();
+      // closeScreensaver();
     }
   }, 1000);
 }
