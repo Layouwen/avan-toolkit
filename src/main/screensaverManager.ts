@@ -6,6 +6,7 @@ import { getConfig } from './configManager';
 let screensaverWindow: BrowserWindow | null = null;
 let triggerTimer: NodeJS.Timeout | null = null;
 let nextTriggerAt: number | null = null;
+let screensaverOpening = false;
 
 export interface ScreensaverStatus {
   enabled: boolean;
@@ -53,52 +54,67 @@ function createScreensaverWindow(_config: AppConfig['screensaver']) {
 
   screensaverWindow.on('closed', () => {
     screensaverWindow = null;
-  });
-
-  // 监听屏保页面的关闭请求
-  ipcMain.on('screensaver:request-close', () => {
-    closeScreensaver();
+    scheduleTriggerAfterScreensaverClosed();
   });
 }
 
-function scheduleTriggerTimer(config: AppConfig) {
+function scheduleNextTrigger(config: AppConfig) {
   stopTriggerTimer();
 
   if (config.screensaver.enabled && config.screensaver.triggerIntervalMinutes > 0) {
     const intervalMs = config.screensaver.triggerIntervalMinutes * 60 * 1000;
     nextTriggerAt = Date.now() + intervalMs;
-    triggerTimer = setInterval(() => {
-      nextTriggerAt = Date.now() + intervalMs;
+    triggerTimer = setTimeout(() => {
+      triggerTimer = null;
+      nextTriggerAt = null;
       triggerScreensaver();
     }, intervalMs);
   }
 }
 
 function startTriggerTimer() {
-  void getConfig().then(scheduleTriggerTimer);
+  void getConfig().then((config) => {
+    if (screensaverWindow || screensaverOpening) {
+      stopTriggerTimer();
+      return;
+    }
+    scheduleNextTrigger(config);
+  });
 }
 
 function stopTriggerTimer() {
   if (triggerTimer) {
-    clearInterval(triggerTimer);
+    clearTimeout(triggerTimer);
     triggerTimer = null;
   }
   nextTriggerAt = null;
 }
 
+function scheduleTriggerAfterScreensaverClosed() {
+  void getConfig().then((config) => {
+    if (screensaverWindow || screensaverOpening) {
+      return;
+    }
+    scheduleNextTrigger(config);
+  });
+}
+
 export function triggerScreensaver() {
-  if (screensaverWindow) {
+  if (screensaverWindow || screensaverOpening) {
     return;
   }
+  screensaverOpening = true;
+  stopTriggerTimer();
   void getConfig().then((config) => {
     createScreensaverWindow(config.screensaver);
+  }).finally(() => {
+    screensaverOpening = false;
   });
 }
 
 export function closeScreensaver() {
   if (screensaverWindow) {
     screensaverWindow.close();
-    screensaverWindow = null;
   }
 }
 
@@ -112,7 +128,15 @@ export async function getScreensaverStatus(): Promise<ScreensaverStatus> {
   const intervalSeconds = config.screensaver.triggerIntervalMinutes * 60;
 
   if (enabled && !triggerTimer) {
-    scheduleTriggerTimer(config);
+    if (screensaverWindow || screensaverOpening) {
+      return {
+        enabled,
+        intervalSeconds,
+        nextTriggerAt: null,
+        remainingSeconds: 0,
+      };
+    }
+    scheduleNextTrigger(config);
   }
 
   const remainingSeconds = enabled && nextTriggerAt
@@ -130,6 +154,9 @@ export async function getScreensaverStatus(): Promise<ScreensaverStatus> {
 export function initializeScreensaver() {
   startTriggerTimer();
 
+  ipcMain.on('screensaver:request-close', () => {
+    closeScreensaver();
+  });
   ipcMain.handle('screensaver:trigger', () => triggerScreensaver());
   ipcMain.handle('screensaver:close', () => closeScreensaver());
   ipcMain.handle('screensaver:getConfig', () => getConfig().then(c => c.screensaver));
