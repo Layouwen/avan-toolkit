@@ -2,8 +2,11 @@ import type { BrowserContext, Frame, Locator, Page } from 'playwright';
 import type { AppConfig } from './configManager';
 import type { ModuleLogger } from './logger';
 import { Buffer } from 'node:buffer';
+import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
 import vm from 'node:vm';
-import { chromium } from 'playwright';
+import { app } from 'electron';
 import { createModuleLogger } from './logger';
 
 export interface QzoneAutomationResult {
@@ -37,6 +40,7 @@ const FEED_PAGE_LIMIT = 3;
 const SESSION_CLOSE_TIMEOUT_MS = 3_000;
 const IMAGE_FETCH_TIMEOUT_MS = 5_000;
 const IMAGE_INLINE_LIMIT = 12;
+const PACKAGED_PLAYWRIGHT_BROWSERS_DIR = '.playwright-browsers';
 
 interface QzoneBrowserSession {
   profileDir: string;
@@ -104,6 +108,7 @@ interface QzoneFeedApiSession {
 let qzoneSession: QzoneBrowserSession | null = null;
 let qzoneFeedApiSession: QzoneFeedApiSession | null = null;
 let qzoneTaskQueue: Promise<void> = Promise.resolve();
+let chromiumPromise: Promise<typeof import('playwright')['chromium']> | null = null;
 const qzoneStepLoggers = new WeakMap<string[], ModuleLogger>();
 
 function pushStep(steps: string[], message: string) {
@@ -136,6 +141,30 @@ function normalizeUin(value: string | undefined | null): string | null {
 
 function profileDirOf(qzone: QzoneConfig): string {
   return qzone.playwrightProfileDir.trim();
+}
+
+function resolvePlaywrightBrowsersPath(): string | null {
+  const browsersPath = app.isPackaged
+    ? path.join(process.resourcesPath, PACKAGED_PLAYWRIGHT_BROWSERS_DIR)
+    : path.join(app.getAppPath(), PACKAGED_PLAYWRIGHT_BROWSERS_DIR);
+
+  return fs.existsSync(browsersPath) ? browsersPath : null;
+}
+
+async function loadChromium(): Promise<typeof import('playwright')['chromium']> {
+  if (!chromiumPromise) {
+    const browsersPath = resolvePlaywrightBrowsersPath();
+    if (browsersPath) {
+      process.env.PLAYWRIGHT_BROWSERS_PATH = browsersPath;
+    }
+
+    chromiumPromise = (async () => {
+      const playwright = await import('playwright');
+      return playwright.chromium;
+    })();
+  }
+
+  return chromiumPromise;
 }
 
 function contentTypeToImageMime(contentType: string | null): string {
@@ -551,6 +580,7 @@ async function getQzoneSession(qzone: QzoneConfig, steps: string[]): Promise<Qzo
 
   if (!qzoneSession) {
     pushStep(steps, `打开可复用浏览器会话: ${profileDir}`);
+    const chromium = await loadChromium();
     const context = await chromium.launchPersistentContext(profileDir, {
       headless: false,
       viewport: { width: 1280, height: 860 },

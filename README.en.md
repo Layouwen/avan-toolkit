@@ -141,10 +141,13 @@ App config is stored in config.json under Electron userData directory:
 ```bash
 npm start        # Start development mode
 npm run lint     # Lint source files
+npm run install:playwright  # Install packaged Playwright Chromium
 npm run package  # Package app directory
 npm run make     # Build platform installers
 npm run publish  # Publish (requires setup)
 ```
+
+`npm run package` and `npm run make` run `npm run install:playwright` first, downloading Chromium into `.playwright-browsers/` and packaging it as an Electron `Resources` asset. After packaging, Qzone automation loads Chromium from the embedded resource directory instead of requiring Playwright browsers to be installed on the target machine.
 
 ## Architecture
 

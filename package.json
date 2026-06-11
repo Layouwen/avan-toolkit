@@ -13,11 +13,11 @@
   "main": ".vite/build/main.js",
   "scripts": {
     "dev": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
+    "package": "npm run install:playwright && electron-forge package",
+    "make": "npm run install:playwright && electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
-    "install:playwright": "playwright install chromium"
+    "install:playwright": "node scripts/install-playwright-browsers.mjs"
   },
   "dependencies": {
     "dotenv": "^17.4.2",

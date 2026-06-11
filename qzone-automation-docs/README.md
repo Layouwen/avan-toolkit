@@ -445,9 +445,18 @@ external: [
 
 这表示运行时由 Node/Electron 加载这些包，而不是由 Rollup 打包解析它们。
 
+Electron Forge 的 Vite 插件默认只复制 `/.vite` 到打包目录。为了让 external 后的运行时加载可用，`forge.config.ts` 使用白名单保留：
+
+- `/.vite`
+- `/package.json`
+- `/node_modules/playwright`
+- `/node_modules/playwright-core`
+
+打包前通过 `npm run install:playwright` 把 Chromium 安装到 `.playwright-browsers/`。`npm run package` 和 `npm run make` 会自动先执行该脚本，并把 `.playwright-browsers/` 复制到 Electron `Resources`。打包后的 Qzone 自动化会把 `PLAYWRIGHT_BROWSERS_PATH` 指向 `process.resourcesPath/.playwright-browsers`，因此目标机器不需要额外安装 Playwright Chromium。
+
 ## 当前验证状态
 
-- `npm run install:playwright` 已用于安装 Chromium。
-- `npm run package` 可以通过。
+- `npm run install:playwright` 会安装用于打包内置的 Chromium。
+- `npm run package` 会把 Playwright 模块与内置 Chromium 一起打入应用。
 - 自动化流程已能看到扫码登录和输入动作。
 - 当前主要待修问题是：输入框定位过宽，导致内容写入位置不稳定。

@@ -141,10 +141,13 @@ npm run make
 ```bash
 npm start      # 启动开发模式
 npm run lint   # 代码检查
+npm run install:playwright  # 安装打包内置的 Playwright Chromium
 npm run package  # 打包应用目录
 npm run make     # 生成平台安装包
 npm run publish  # 发布（需预先配置）
 ```
+
+`npm run package` 和 `npm run make` 会先执行 `npm run install:playwright`，把 Chromium 下载到 `.playwright-browsers/` 并作为 Electron `Resources` 资源随应用打包。Qzone 自动化在打包后会从内置资源加载 Chromium，不依赖目标机器预先安装 Playwright 浏览器。
 
 ## 项目架构
 
