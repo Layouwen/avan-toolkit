@@ -90,7 +90,6 @@ const config: ForgeConfig = {
         {
           name: 'screensaver_window',
           config: 'vite.renderer.config.mts',
-          entry: 'screensaver-vue.html',
         },
       ],
     }),

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+// eslint-disable-next-line test/no-import-node-test
 import test from 'node:test';
 
 const root = process.cwd();
@@ -12,7 +13,7 @@ function readProjectFile(relativePath) {
 test('Forge packaging keeps Playwright modules and embedded browser resources', () => {
   const forgeConfig = readProjectFile('forge.config.ts');
 
-  assert.match(forgeConfig, /asar:\s*\{\s*unpack:\s*['"]\*\*\/\*\.node['"]/s);
+  assert.match(forgeConfig, /asar:\s*\{\s*unpack:\s*['"]\*\*\/\*\.node['"]/);
   assert.match(forgeConfig, /extraResource:\s*\[[\s\S]*['"]\.\/screensaver\.html['"][\s\S]*['"]\.\/\.playwright-browsers['"]/);
   assert.match(forgeConfig, /['"]\/node_modules['"]/);
   assert.doesNotMatch(forgeConfig, /allowedPaths\s*=\s*\[[\s\S]*['"]\/node_modules['"][\s\S]*\]/);
@@ -39,4 +40,19 @@ test('npm scripts install embedded Playwright browsers before package and make',
   assert.equal(packageJson.scripts['install:playwright'], 'node scripts/install-playwright-browsers.mjs');
   assert.equal(packageJson.scripts.package, 'npm run install:playwright && electron-forge package');
   assert.equal(packageJson.scripts.make, 'npm run install:playwright && electron-forge make');
+});
+
+test('screensaver renderer builds from its dedicated HTML entry', () => {
+  const forgeConfig = readProjectFile('forge.config.ts');
+  const rendererConfig = readProjectFile('vite.renderer.config.mts');
+
+  assert.doesNotMatch(forgeConfig, /entry:\s*['"]screensaver-vue\.html['"]/);
+  assert.match(rendererConfig, /forgeConfigSelf/);
+  assert.match(rendererConfig, /rendererName\s*=\s*forgeConfigSelf\.name/);
+  assert.match(rendererConfig, /rendererName\s*===\s*['"]screensaver_window['"]/);
+  assert.match(rendererConfig, /screensaver-vue\.html/);
+  assert.match(rendererConfig, /index\.html/);
+  assert.match(rendererConfig, /rollupOptions:\s*\{[\s\S]*input:/);
+  assert.match(rendererConfig, /copyScreensaverHtmlToIndex/);
+  assert.match(rendererConfig, /copyFileSync\(source,\s*target\)/);
 });
