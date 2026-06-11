@@ -1,6 +1,6 @@
 {
   "name": "avan-toolkit",
-  "productName": "avan-toolkit",
+  "productName": "AvanToolkit",
   "version": "1.0.0",
   "private": true,
   "description": "⚡ A cross-platform desktop toolbox built with Electron. Integrates daily utilities for developers and creators. 一个用 Electron 构建的跨平台桌面工具箱，集成日常实用功能.",
@@ -37,6 +37,7 @@
     "@antfu/eslint-config": "^9.0.0",
     "@electron-forge/cli": "^7.11.2",
     "@electron-forge/maker-deb": "^7.11.2",
+    "@electron-forge/maker-dmg": "^7.11.2",
     "@electron-forge/maker-rpm": "^7.11.2",
     "@electron-forge/maker-squirrel": "^7.11.2",
     "@electron-forge/maker-zip": "^7.11.2",

@@ -42,6 +42,18 @@ test('npm scripts install embedded Playwright browsers before package and make',
   assert.equal(packageJson.scripts.make, 'npm run install:playwright && electron-forge make');
 });
 
+test('macOS make target creates a configured DMG installer', () => {
+  const forgeConfig = readProjectFile('forge.config.ts');
+  const packageJson = JSON.parse(readProjectFile('package.json'));
+
+  assert.equal(packageJson.devDependencies['@electron-forge/maker-dmg'], '^7.11.2');
+  assert.match(forgeConfig, /MakerDMG/);
+  assert.match(forgeConfig, /title:\s*['"]AvanToolkit['"]/);
+  assert.match(forgeConfig, /format:\s*['"]ULFO['"]/);
+  assert.match(forgeConfig, /path:\s*['"]\/Applications['"]/);
+  assert.match(forgeConfig, /\[['"]darwin['"]\]/);
+});
+
 test('screensaver renderer builds from its dedicated HTML entry', () => {
   const forgeConfig = readProjectFile('forge.config.ts');
   const rendererConfig = readProjectFile('vite.renderer.config.mts');

@@ -2,6 +2,7 @@ import type { ForgeConfig } from '@electron-forge/shared-types';
 import fs from 'node:fs';
 import path from 'node:path';
 import { MakerDeb } from '@electron-forge/maker-deb';
+import { MakerDMG } from '@electron-forge/maker-dmg';
 import { MakerRpm } from '@electron-forge/maker-rpm';
 import { MakerSquirrel } from '@electron-forge/maker-squirrel';
 import { MakerZIP } from '@electron-forge/maker-zip';
@@ -10,6 +11,11 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
 const PLAYWRIGHT_BROWSERS_DIR = '.playwright-browsers';
+const APP_ICON = './assets/icons/AvanToolkit';
+const DMG_WINDOW_SIZE = {
+  width: 658,
+  height: 498,
+};
 
 function isAllowedPackagePath(filePath: string): boolean {
   if (!filePath) {
@@ -47,7 +53,8 @@ const config: ForgeConfig = {
     asar: {
       unpack: '**/*.node',
     },
-    extraResource: ['./screensaver.html', './.playwright-browsers'],
+    icon: APP_ICON,
+    extraResource: ['./screensaver.html', './.playwright-browsers', './assets/icons/AvanToolkit.png'],
     ignore: filePath => !isAllowedPackagePath(filePath),
     prune: false,
   },
@@ -60,6 +67,22 @@ const config: ForgeConfig = {
   },
   rebuildConfig: {},
   makers: [
+    new MakerDMG({
+      title: 'AvanToolkit',
+      icon: `${APP_ICON}.icns`,
+      format: 'ULFO',
+      overwrite: true,
+      iconSize: 96,
+      contents: opts => [
+        { x: 192, y: 344, type: 'file', path: opts.appPath },
+        { x: 448, y: 344, type: 'link', path: '/Applications' },
+      ],
+      additionalDMGOptions: {
+        window: {
+          size: DMG_WINDOW_SIZE,
+        },
+      },
+    }, ['darwin']),
     new MakerSquirrel({}),
     new MakerZIP({}, ['darwin']),
     new MakerRpm({}),

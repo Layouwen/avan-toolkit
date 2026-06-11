@@ -10,6 +10,7 @@ import {
 import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import appLogoUrl from '../assets/icons/AvanToolkit.png';
 
 const { t, locale } = useI18n();
 const route = useRoute();
@@ -54,7 +55,8 @@ onMounted(async () => {
       <div v-else class="h-screen flex flex-col">
         <NLayoutHeader bordered class="shrink-0">
           <NSpace class="px-4 py-2" align="center" justify="space-between">
-            <div class="text-sm font-medium text-[#e5e7eb]">
+            <div class="flex items-center gap-2 text-sm font-medium text-[#e5e7eb]">
+              <img class="h-7 w-7 rounded-md" :src="appLogoUrl" alt="Avan Toolkit logo">
               Avan Toolkit
             </div>
             <NMenu

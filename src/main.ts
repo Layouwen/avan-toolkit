@@ -111,11 +111,20 @@ if (started) {
 let mainWindow: BrowserWindow | null = null;
 const logSubscriptions = new Map<number, () => void>();
 
+function getAppIconPath(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'AvanToolkit.png');
+  }
+
+  return path.resolve('assets/icons/AvanToolkit.png');
+}
+
 function createWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 900,
     height: 700,
+    icon: getAppIconPath(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
