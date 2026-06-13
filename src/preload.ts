@@ -95,6 +95,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openHexoProjectInEditor: () => ipcRenderer.invoke('blogs:openHexoProjectInEditor'),
   createObsidianBlog: (payload: CreateObsidianBlogPayload) => ipcRenderer.invoke('blogs:create', payload),
   deleteObsidianBlog: (relativePath: string) => ipcRenderer.invoke('blogs:delete', relativePath),
+  deleteHexoOrphanBlog: (relativePath: string) => ipcRenderer.invoke('blogs:deleteHexoOrphan', relativePath),
   renameObsidianBlogTitle: (relativePath: string, title: string) =>
     ipcRenderer.invoke('blogs:renameTitle', relativePath, title),
   renameObsidianBlogFileName: (relativePath: string, fileName: string) =>

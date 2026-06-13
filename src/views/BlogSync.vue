@@ -75,6 +75,7 @@ const loadingBlogs = ref(false);
 const validatingBlogs = ref(false);
 const creatingBlog = ref(false);
 const deletingBlogId = ref('');
+const deletingHexoIssueId = ref('');
 const blogError = ref('');
 const validationError = ref('');
 const validationResult = ref<BlogValidationResult>({
@@ -704,6 +705,10 @@ function issueTagType(issue: BlogValidationIssue) {
   return issue.severity === 'error' ? 'error' : 'warning';
 }
 
+function canDeleteHexoOrphanIssue(issue: BlogValidationIssue) {
+  return issue.source === 'hexo' && issue.field === 'sync:missingObsidian';
+}
+
 function emptyValidationResult(): BlogValidationResult {
   return {
     ok: true,
@@ -727,6 +732,21 @@ async function openValidationIssue(issue: BlogValidationIssue) {
   }
   finally {
     openingValidationIssueId.value = '';
+  }
+}
+
+async function deleteHexoOrphanBlog(issue: BlogValidationIssue) {
+  deletingHexoIssueId.value = issue.id;
+  validationError.value = '';
+  try {
+    await window.electronAPI.deleteHexoOrphanBlog(issue.relativePath);
+    await loadValidation();
+  }
+  catch (error) {
+    validationError.value = error instanceof Error ? error.message : String(error);
+  }
+  finally {
+    deletingHexoIssueId.value = '';
   }
 }
 
@@ -947,15 +967,34 @@ function openHexoProjectInEditor() {
                         {{ issue.message }}
                       </div>
                     </div>
-                    <NButton
-                      size="small"
-                      tertiary
-                      class="shrink-0"
-                      :loading="openingValidationIssueId === issue.id"
-                      @click="openValidationIssue(issue)"
-                    >
-                      {{ t('blogSync.validation.open') }}
-                    </NButton>
+                    <div class="flex shrink-0 items-center gap-2">
+                      <NPopconfirm
+                        v-if="canDeleteHexoOrphanIssue(issue)"
+                        :positive-text="t('blogSync.validation.confirmDeleteHexoOrphan')"
+                        :negative-text="t('blogSync.validation.cancelDeleteHexoOrphan')"
+                        @positive-click="deleteHexoOrphanBlog(issue)"
+                      >
+                        <template #trigger>
+                          <NButton
+                            size="small"
+                            tertiary
+                            type="error"
+                            :loading="deletingHexoIssueId === issue.id"
+                          >
+                            {{ t('blogSync.validation.deleteHexoOrphan') }}
+                          </NButton>
+                        </template>
+                        {{ t('blogSync.validation.deleteHexoOrphanPrompt', { path: issue.relativePath }) }}
+                      </NPopconfirm>
+                      <NButton
+                        size="small"
+                        tertiary
+                        :loading="openingValidationIssueId === issue.id"
+                        @click="openValidationIssue(issue)"
+                      >
+                        {{ t('blogSync.validation.open') }}
+                      </NButton>
+                    </div>
                   </div>
                 </div>
               </template>

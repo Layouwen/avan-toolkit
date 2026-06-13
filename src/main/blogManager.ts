@@ -24,6 +24,8 @@ export interface CreateObsidianBlogPayload {
   categories?: string[];
 }
 
+const HEXO_SYNCED_BLOG_DIRS = ['article', 'summary'] as const;
+
 async function directoryExists(dirPath: string): Promise<boolean> {
   try {
     const stat = await fs.stat(dirPath);
@@ -46,6 +48,13 @@ function assertInside(parent: string, target: string): void {
   const relative = path.relative(parent, target);
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
     throw new Error('Path is outside the Obsidian blog directory.');
+  }
+}
+
+function assertPathInside(parent: string, target: string, message: string): void {
+  const relative = path.relative(parent, target);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error(message);
   }
 }
 
@@ -201,6 +210,35 @@ export async function deleteObsidianBlog(
   const filePath = path.resolve(root, relativePath);
   assertInside(root, filePath);
   await fs.unlink(filePath);
+}
+
+export async function resolveHexoOrphanBlogPath(
+  config: AppConfig,
+  relativePath: string,
+): Promise<string> {
+  const hexoRoot = config.hexoBlogDir.trim();
+  if (!hexoRoot) {
+    throw new Error('Hexo Blog directory is not configured.');
+  }
+  if (!relativePath || !relativePath.endsWith('.md')) {
+    throw new Error('Only markdown blog files can be removed.');
+  }
+
+  const postsRoot = path.resolve(hexoRoot, 'source', '_posts');
+  const filePath = path.resolve(postsRoot, relativePath);
+  assertPathInside(postsRoot, filePath, 'Path is outside the Hexo posts directory.');
+
+  const section = path.relative(postsRoot, filePath).split(path.sep)[0];
+  if (!HEXO_SYNCED_BLOG_DIRS.includes(section as typeof HEXO_SYNCED_BLOG_DIRS[number])) {
+    throw new Error('Only synced Hexo article and summary blog files can be removed.');
+  }
+
+  const stat = await fs.stat(filePath);
+  if (!stat.isFile()) {
+    throw new Error('Only markdown blog files can be removed.');
+  }
+
+  return filePath;
 }
 
 function resolveBlogFilePath(root: string, relativePath: string): string {

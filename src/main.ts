@@ -11,6 +11,7 @@ import {
   listObsidianBlogs,
   renameObsidianBlogFileName,
   renameObsidianBlogTitle,
+  resolveHexoOrphanBlogPath,
 } from './main/blogManager';
 import { validateObsidianBlogs } from './main/blogValidator';
 import { getConfig, setConfig } from './main/configManager';
@@ -279,6 +280,22 @@ ipcMain.handle('blogs:create', async (_event, payload: CreateObsidianBlogPayload
 ipcMain.handle('blogs:delete', async (_event, relativePath: string) => {
   const config = await getConfig();
   await deleteObsidianBlog(config, relativePath);
+});
+
+ipcMain.handle('blogs:deleteHexoOrphan', async (_event, relativePath: string) => {
+  const config = await getConfig();
+  const validation = await validateObsidianBlogs(config);
+  const orphanIssue = validation.issues.some(issue =>
+    issue.source === 'hexo'
+    && issue.field === 'sync:missingObsidian'
+    && issue.relativePath === relativePath,
+  );
+  if (!orphanIssue) {
+    throw new Error('Only Hexo files missing from Obsidian can be removed from this action.');
+  }
+
+  const filePath = await resolveHexoOrphanBlogPath(config, relativePath);
+  await shell.trashItem(filePath);
 });
 
 ipcMain.handle('blogs:renameTitle', async (_event, relativePath: string, title: string) => {
