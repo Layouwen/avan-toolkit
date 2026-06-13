@@ -25,6 +25,7 @@ const { t } = useI18n();
 const config = ref<AppConfig>({
   obsidianBlogDir: '',
   hexoBlogDir: '',
+  hexoEditorCommand: 'cursor',
   locale: '',
   agent: {
     baseURL: '',
@@ -36,6 +37,14 @@ const config = ref<AppConfig>({
     qqNumber: '',
     qqPassword: '',
     playwrightProfileDir: '',
+  },
+  screensaver: {
+    enabled: true,
+    triggerIntervalMinutes: 45,
+    countdownSeconds: 30,
+    backgroundType: 'color',
+    backgroundColor: '#1a3a2a',
+    backgroundImagePath: '',
   },
 });
 const content = ref('');

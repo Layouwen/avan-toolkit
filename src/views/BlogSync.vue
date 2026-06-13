@@ -59,6 +59,14 @@ const config = ref<AppConfig>({
     qqPassword: '',
     playwrightProfileDir: '',
   },
+  screensaver: {
+    enabled: true,
+    triggerIntervalMinutes: 45,
+    countdownSeconds: 30,
+    backgroundType: 'color',
+    backgroundColor: '#1a3a2a',
+    backgroundImagePath: '',
+  },
 });
 const logs = ref<LogLine[]>([]);
 const blogs = ref<ObsidianBlog[]>([]);
