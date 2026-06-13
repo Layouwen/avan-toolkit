@@ -1,0 +1,45 @@
+// vite.renderer.config.mts
+import { copyFileSync, existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import tailwindcss from "file:///Users/avan/Code/personal/avan-toolkit/node_modules/@tailwindcss/vite/dist/index.mjs";
+import vue from "file:///Users/avan/Code/personal/avan-toolkit/node_modules/@vitejs/plugin-vue/dist/index.mjs";
+import { defineConfig } from "file:///Users/avan/Code/personal/avan-toolkit/node_modules/vite/dist/node/index.js";
+var __vite_injected_original_import_meta_url = "file:///Users/avan/Code/personal/avan-toolkit/vite.renderer.config.mts";
+var rootDir = dirname(fileURLToPath(__vite_injected_original_import_meta_url));
+function copyScreensaverHtmlToIndex(rendererName, entryHtml) {
+  let outDir = "";
+  return {
+    name: "copy-screensaver-html-to-index",
+    apply: "build",
+    configResolved(config) {
+      outDir = config.build.outDir;
+    },
+    closeBundle() {
+      if (rendererName !== "screensaver_window") {
+        return;
+      }
+      const source = resolve(outDir, entryHtml);
+      const target = resolve(outDir, "index.html");
+      if (existsSync(source)) {
+        copyFileSync(source, target);
+      }
+    }
+  };
+}
+var vite_renderer_config_default = defineConfig(({ forgeConfigSelf }) => {
+  const rendererName = forgeConfigSelf.name;
+  const entryHtml = rendererName === "screensaver_window" ? "screensaver-vue.html" : "index.html";
+  return {
+    plugins: [tailwindcss(), vue(), copyScreensaverHtmlToIndex(rendererName, entryHtml)],
+    build: {
+      rollupOptions: {
+        input: resolve(rootDir, entryHtml)
+      }
+    }
+  };
+});
+export {
+  vite_renderer_config_default as default
+};
+//# sourceMappingURL=data:application/json;base64,ewogICJ2ZXJzaW9uIjogMywKICAic291cmNlcyI6IFsidml0ZS5yZW5kZXJlci5jb25maWcubXRzIl0sCiAgInNvdXJjZXNDb250ZW50IjogWyJjb25zdCBfX3ZpdGVfaW5qZWN0ZWRfb3JpZ2luYWxfZGlybmFtZSA9IFwiL1VzZXJzL2F2YW4vQ29kZS9wZXJzb25hbC9hdmFuLXRvb2xraXRcIjtjb25zdCBfX3ZpdGVfaW5qZWN0ZWRfb3JpZ2luYWxfZmlsZW5hbWUgPSBcIi9Vc2Vycy9hdmFuL0NvZGUvcGVyc29uYWwvYXZhbi10b29sa2l0L3ZpdGUucmVuZGVyZXIuY29uZmlnLm10c1wiO2NvbnN0IF9fdml0ZV9pbmplY3RlZF9vcmlnaW5hbF9pbXBvcnRfbWV0YV91cmwgPSBcImZpbGU6Ly8vVXNlcnMvYXZhbi9Db2RlL3BlcnNvbmFsL2F2YW4tdG9vbGtpdC92aXRlLnJlbmRlcmVyLmNvbmZpZy5tdHNcIjtpbXBvcnQgdHlwZSB7IFBsdWdpbiB9IGZyb20gJ3ZpdGUnO1xuaW1wb3J0IHsgY29weUZpbGVTeW5jLCBleGlzdHNTeW5jIH0gZnJvbSAnbm9kZTpmcyc7XG5pbXBvcnQgeyBkaXJuYW1lLCByZXNvbHZlIH0gZnJvbSAnbm9kZTpwYXRoJztcbmltcG9ydCB7IGZpbGVVUkxUb1BhdGggfSBmcm9tICdub2RlOnVybCc7XG5pbXBvcnQgdGFpbHdpbmRjc3MgZnJvbSAnQHRhaWx3aW5kY3NzL3ZpdGUnO1xuaW1wb3J0IHZ1ZSBmcm9tICdAdml0ZWpzL3BsdWdpbi12dWUnO1xuaW1wb3J0IHsgZGVmaW5lQ29uZmlnIH0gZnJvbSAndml0ZSc7XG5cbmNvbnN0IHJvb3REaXIgPSBkaXJuYW1lKGZpbGVVUkxUb1BhdGgoaW1wb3J0Lm1ldGEudXJsKSk7XG5cbmZ1bmN0aW9uIGNvcHlTY3JlZW5zYXZlckh0bWxUb0luZGV4KHJlbmRlcmVyTmFtZTogc3RyaW5nLCBlbnRyeUh0bWw6IHN0cmluZyk6IFBsdWdpbiB7XG4gIGxldCBvdXREaXIgPSAnJztcblxuICByZXR1cm4ge1xuICAgIG5hbWU6ICdjb3B5LXNjcmVlbnNhdmVyLWh0bWwtdG8taW5kZXgnLFxuICAgIGFwcGx5OiAnYnVpbGQnLFxuICAgIGNvbmZpZ1Jlc29sdmVkKGNvbmZpZykge1xuICAgICAgb3V0RGlyID0gY29uZmlnLmJ1aWxkLm91dERpcjtcbiAgICB9LFxuICAgIGNsb3NlQnVuZGxlKCkge1xuICAgICAgaWYgKHJlbmRlcmVyTmFtZSAhPT0gJ3NjcmVlbnNhdmVyX3dpbmRvdycpIHtcbiAgICAgICAgcmV0dXJuO1xuICAgICAgfVxuXG4gICAgICBjb25zdCBzb3VyY2UgPSByZXNvbHZlKG91dERpciwgZW50cnlIdG1sKTtcbiAgICAgIGNvbnN0IHRhcmdldCA9IHJlc29sdmUob3V0RGlyLCAnaW5kZXguaHRtbCcpO1xuICAgICAgaWYgKGV4aXN0c1N5bmMoc291cmNlKSkge1xuICAgICAgICBjb3B5RmlsZVN5bmMoc291cmNlLCB0YXJnZXQpO1xuICAgICAgfVxuICAgIH0sXG4gIH07XG59XG5cbi8vIGh0dHBzOi8vdml0ZWpzLmRldi9jb25maWdcbmV4cG9ydCBkZWZhdWx0IGRlZmluZUNvbmZpZygoeyBmb3JnZUNvbmZpZ1NlbGYgfSkgPT4ge1xuICBjb25zdCByZW5kZXJlck5hbWUgPSBmb3JnZUNvbmZpZ1NlbGYubmFtZTtcbiAgY29uc3QgZW50cnlIdG1sID0gcmVuZGVyZXJOYW1lID09PSAnc2NyZWVuc2F2ZXJfd2luZG93J1xuICAgID8gJ3NjcmVlbnNhdmVyLXZ1ZS5odG1sJ1xuICAgIDogJ2luZGV4Lmh0bWwnO1xuXG4gIHJldHVybiB7XG4gICAgcGx1Z2luczogW3RhaWx3aW5kY3NzKCksIHZ1ZSgpLCBjb3B5U2NyZWVuc2F2ZXJIdG1sVG9JbmRleChyZW5kZXJlck5hbWUsIGVudHJ5SHRtbCldLFxuICAgIGJ1aWxkOiB7XG4gICAgICByb2xsdXBPcHRpb25zOiB7XG4gICAgICAgIGlucHV0OiByZXNvbHZlKHJvb3REaXIsIGVudHJ5SHRtbCksXG4gICAgICB9LFxuICAgIH0sXG4gIH07XG59KTtcbiJdLAogICJtYXBwaW5ncyI6ICI7QUFDQSxTQUFTLGNBQWMsa0JBQWtCO0FBQ3pDLFNBQVMsU0FBUyxlQUFlO0FBQ2pDLFNBQVMscUJBQXFCO0FBQzlCLE9BQU8saUJBQWlCO0FBQ3hCLE9BQU8sU0FBUztBQUNoQixTQUFTLG9CQUFvQjtBQU5pSyxJQUFNLDJDQUEyQztBQVEvTyxJQUFNLFVBQVUsUUFBUSxjQUFjLHdDQUFlLENBQUM7QUFFdEQsU0FBUywyQkFBMkIsY0FBc0IsV0FBMkI7QUFDbkYsTUFBSSxTQUFTO0FBRWIsU0FBTztBQUFBLElBQ0wsTUFBTTtBQUFBLElBQ04sT0FBTztBQUFBLElBQ1AsZUFBZSxRQUFRO0FBQ3JCLGVBQVMsT0FBTyxNQUFNO0FBQUEsSUFDeEI7QUFBQSxJQUNBLGNBQWM7QUFDWixVQUFJLGlCQUFpQixzQkFBc0I7QUFDekM7QUFBQSxNQUNGO0FBRUEsWUFBTSxTQUFTLFFBQVEsUUFBUSxTQUFTO0FBQ3hDLFlBQU0sU0FBUyxRQUFRLFFBQVEsWUFBWTtBQUMzQyxVQUFJLFdBQVcsTUFBTSxHQUFHO0FBQ3RCLHFCQUFhLFFBQVEsTUFBTTtBQUFBLE1BQzdCO0FBQUEsSUFDRjtBQUFBLEVBQ0Y7QUFDRjtBQUdBLElBQU8sK0JBQVEsYUFBYSxDQUFDLEVBQUUsZ0JBQWdCLE1BQU07QUFDbkQsUUFBTSxlQUFlLGdCQUFnQjtBQUNyQyxRQUFNLFlBQVksaUJBQWlCLHVCQUMvQix5QkFDQTtBQUVKLFNBQU87QUFBQSxJQUNMLFNBQVMsQ0FBQyxZQUFZLEdBQUcsSUFBSSxHQUFHLDJCQUEyQixjQUFjLFNBQVMsQ0FBQztBQUFBLElBQ25GLE9BQU87QUFBQSxNQUNMLGVBQWU7QUFBQSxRQUNiLE9BQU8sUUFBUSxTQUFTLFNBQVM7QUFBQSxNQUNuQztBQUFBLElBQ0Y7QUFBQSxFQUNGO0FBQ0YsQ0FBQzsiLAogICJuYW1lcyI6IFtdCn0K
