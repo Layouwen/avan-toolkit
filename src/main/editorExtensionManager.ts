@@ -230,10 +230,14 @@ function shouldIncludeRecord(record: EditorExtensionRecord, target: EditorKind |
   return record.scope === 'common' || record.scope === target;
 }
 
+function shouldExportRecord(record: EditorExtensionRecord, target: EditorKind | 'common'): boolean {
+  return record.scope === target;
+}
+
 export function exportEditorExtensionsMarkdown(records: EditorExtensionRecord[], target: EditorKind | 'common'): string {
   validateTarget(target);
   const rows = records
-    .filter(record => shouldIncludeRecord(record, target))
+    .filter(record => shouldExportRecord(record, target))
     .sort((a, b) => a.name.localeCompare(b.name) || a.extensionId.localeCompare(b.extensionId));
   const table = [
     '|序号|插件 id|插件名|插件备注|',
