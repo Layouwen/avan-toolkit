@@ -422,6 +422,13 @@ ipcMain.handle('editorExtensions:initialize', (_event, source: 'vscode' | 'curso
 
 ipcMain.handle('editorExtensions:readClipboard', () => clipboard.readText());
 
+ipcMain.handle('editorExtensions:copyExtensionId', (_event, extensionId: string) => {
+  if (!/^[a-z0-9][a-z0-9-]*\.[a-z0-9][a-z0-9-]*$/i.test(extensionId)) {
+    throw new Error('Invalid extension id.');
+  }
+  clipboard.writeText(extensionId.trim().toLowerCase());
+});
+
 ipcMain.handle('editorExtensions:runCommand', (_event, editor: EditorKind, action: 'install' | 'uninstall', extensionId: string) =>
   runEditorExtensionCommand(editor, action, extensionId));
 

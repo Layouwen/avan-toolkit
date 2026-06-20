@@ -208,6 +208,7 @@ export interface ElectronAPI {
   importEditorExtensionsMarkdown: (markdown: string, scope: EditorExtensionScope) => Promise<EditorExtensionImportResult>;
   initializeEditorExtensions: (source: EditorExtensionInitializeSource) => Promise<EditorExtensionInitializeResult>;
   readClipboardText: () => Promise<string>;
+  copyEditorExtensionId: (extensionId: string) => Promise<void>;
   runEditorExtensionCommand: (editor: EditorKind, action: 'install' | 'uninstall', extensionId: string) => Promise<EditorExtensionCommandResult>;
   runEditorExtensionBulkCommand: (editor: EditorKind, action: 'install' | 'uninstall', target: EditorKind | 'common') => Promise<EditorExtensionCommandResult[]>;
   openExternal: (url: string) => Promise<void>;

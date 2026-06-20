@@ -188,6 +188,7 @@ export default {
     searchPlaceholder: '搜索插件 id、插件名或备注',
     index: '序号',
     extensionId: '插件 id',
+    extensionIdCopied: '插件 id 已复制到剪贴板。',
     extensionName: '插件名',
     namePlaceholder: '插件原名或中文名',
     note: '插件备注',

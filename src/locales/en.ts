@@ -188,6 +188,7 @@ export default {
     searchPlaceholder: 'Search extension id, name, or note',
     index: 'No.',
     extensionId: 'Extension id',
+    extensionIdCopied: 'Extension id copied to clipboard.',
     extensionName: 'Extension name',
     namePlaceholder: 'Original or local display name',
     note: 'Note',

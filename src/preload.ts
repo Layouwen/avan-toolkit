@@ -178,6 +178,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   initializeEditorExtensions: (source: EditorExtensionInitializeSource): Promise<EditorExtensionInitializeResult> =>
     ipcRenderer.invoke('editorExtensions:initialize', source),
   readClipboardText: (): Promise<string> => ipcRenderer.invoke('editorExtensions:readClipboard'),
+  copyEditorExtensionId: (extensionId: string): Promise<void> => ipcRenderer.invoke('editorExtensions:copyExtensionId', extensionId),
   runEditorExtensionCommand: (editor: EditorKind, action: 'install' | 'uninstall', extensionId: string): Promise<EditorExtensionCommandResult> =>
     ipcRenderer.invoke('editorExtensions:runCommand', editor, action, extensionId),
   runEditorExtensionBulkCommand: (editor: EditorKind, action: 'install' | 'uninstall', target: EditorKind | 'common'): Promise<EditorExtensionCommandResult[]> =>

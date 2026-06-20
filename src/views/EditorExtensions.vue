@@ -239,6 +239,16 @@ async function readClipboard() {
   importMarkdown.value = await window.electronAPI.readClipboardText();
 }
 
+async function copyExtensionId(extensionId: string) {
+  try {
+    await window.electronAPI.copyEditorExtensionId(extensionId);
+    message.success(t('editorExtensions.extensionIdCopied'));
+  }
+  catch (error) {
+    message.error(error instanceof Error ? error.message : String(error));
+  }
+}
+
 async function importFromMarkdown() {
   if (!importMarkdown.value.trim()) {
     message.warning(t('editorExtensions.importRequired'));
@@ -577,8 +587,14 @@ onMounted(() => {
                   <td class="px-3 py-3 text-[#94a3b8]">
                     {{ index + 1 }}
                   </td>
-                  <td class="break-all px-3 py-3 font-mono text-[#d7dde8]">
-                    {{ record.extensionId }}
+                  <td class="px-3 py-3">
+                    <button
+                      class="cursor-pointer break-all text-left font-mono text-[#d7dde8] transition hover:text-[#63e2b7]"
+                      type="button"
+                      @click="copyExtensionId(record.extensionId)"
+                    >
+                      {{ record.extensionId }}
+                    </button>
                   </td>
                   <td class="break-words px-3 py-3 text-[#e5e7eb]">
                     {{ record.name }}
