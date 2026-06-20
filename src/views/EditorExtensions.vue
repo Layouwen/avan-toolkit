@@ -609,8 +609,8 @@ onMounted(() => {
                   </td>
                   <td class="px-3 py-3">
                     <NSpace vertical :size="8">
-                      <div class="break-words text-xs text-[#cbd5e1]">
-                        {{ record.vscodeName || '-' }}
+                      <div v-if="record.vscodeName" class="break-words text-xs text-[#cbd5e1]">
+                        {{ record.vscodeName }}
                       </div>
                       <NTag size="small" :type="statusType(record.status.vscode)">
                         {{ statusLabel(record.status.vscode) }}
@@ -638,8 +638,8 @@ onMounted(() => {
                   </td>
                   <td class="px-3 py-3">
                     <NSpace vertical :size="8">
-                      <div class="break-words text-xs text-[#cbd5e1]">
-                        {{ record.cursorName || '-' }}
+                      <div v-if="record.cursorName" class="break-words text-xs text-[#cbd5e1]">
+                        {{ record.cursorName }}
                       </div>
                       <NTag size="small" :type="statusType(record.status.cursor)">
                         {{ statusLabel(record.status.cursor) }}
