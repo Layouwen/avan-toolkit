@@ -1,8 +1,9 @@
 import type { CreateObsidianBlogPayload } from './main/blogManager';
+import type { EditorExtensionScope, EditorKind } from './main/editorExtensionManager';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 import started from 'electron-squirrel-startup';
 import { runAgentRecommendation } from './main/agentDemo';
 import {
@@ -16,6 +17,17 @@ import {
 import { validateObsidianBlogs } from './main/blogValidator';
 import { getConfig, setConfig } from './main/configManager';
 import {
+  deleteEditorExtension,
+  exportEditorExtensionsMarkdown,
+  importEditorExtensionsMarkdown,
+  initializeEditorExtensions,
+  listEditorExtensions,
+  listEditorExtensionsWithStatus,
+  runEditorExtensionBulkCommand,
+  runEditorExtensionCommand,
+  upsertEditorExtension,
+} from './main/editorExtensionManager';
+import {
   clearLogs,
   createModuleLogger,
   getLogFilePath,
@@ -24,7 +36,7 @@ import {
 } from './main/logger';
 import { closeQzoneSession, listQzoneShuoshuo, loadMoreQzoneShuoshuo, publishQzoneShuoshuo, testQzoneLogin } from './main/qzoneAutomation';
 import { initializeScreensaver, updateScreensaverConfig } from './main/screensaverManager';
-import { runSyncPipeline } from './main/syncPipeline';
+import { runBlogPull, runSyncPipeline } from './main/syncPipeline';
 
 interface AgentInvokeConfig {
   baseURL: string;
@@ -349,6 +361,25 @@ ipcMain.handle('sync:start', async () => {
   }
 });
 
+ipcMain.handle('sync:pullBlog', async () => {
+  const config = await getConfig();
+  const logger = createModuleLogger({
+    module: 'blogSync',
+    scope: 'pull',
+    onLog: entry => mainWindow?.webContents.send('sync:log', entry.message, entry.level),
+  });
+  try {
+    await runBlogPull(config, (message, level) => logger.log(level, message));
+    logger.success('Blog Pull 完成。');
+    mainWindow?.webContents.send('sync:done', true);
+  }
+  catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(`Blog Pull 失败: ${message}`);
+    mainWindow?.webContents.send('sync:done', false, message);
+  }
+});
+
 ipcMain.handle('logs:list', (_event, filters) => listLogs(filters));
 
 ipcMain.handle('logs:clear', (_event, filters) => {
@@ -367,6 +398,35 @@ ipcMain.handle('logs:unsubscribe', (event) => {
   logSubscriptions.get(event.sender.id)?.();
   logSubscriptions.delete(event.sender.id);
 });
+
+ipcMain.handle('editorExtensions:list', () => listEditorExtensions());
+
+ipcMain.handle('editorExtensions:listWithStatus', () => listEditorExtensionsWithStatus());
+
+ipcMain.handle('editorExtensions:save', (_event, payload) => upsertEditorExtension(payload));
+
+ipcMain.handle('editorExtensions:delete', (_event, recordId: string) => deleteEditorExtension(recordId));
+
+ipcMain.handle('editorExtensions:exportMarkdown', async (_event, target: EditorKind | 'common') => {
+  const records = await listEditorExtensions();
+  const markdown = exportEditorExtensionsMarkdown(records, target);
+  clipboard.writeText(markdown);
+  return markdown;
+});
+
+ipcMain.handle('editorExtensions:importMarkdown', (_event, markdown: string, scope: EditorExtensionScope) =>
+  importEditorExtensionsMarkdown(markdown, scope));
+
+ipcMain.handle('editorExtensions:initialize', (_event, source: 'vscode' | 'cursor' | 'both') =>
+  initializeEditorExtensions(source));
+
+ipcMain.handle('editorExtensions:readClipboard', () => clipboard.readText());
+
+ipcMain.handle('editorExtensions:runCommand', (_event, editor: EditorKind, action: 'install' | 'uninstall', extensionId: string) =>
+  runEditorExtensionCommand(editor, action, extensionId));
+
+ipcMain.handle('editorExtensions:runBulkCommand', (_event, editor: EditorKind, action: 'install' | 'uninstall', target: EditorKind | 'common') =>
+  runEditorExtensionBulkCommand(editor, action, target));
 
 ipcMain.handle('agent:recommendActivity', async (_event, userInput: string, config: AgentInvokeConfig) => {
   const text = userInput.trim();

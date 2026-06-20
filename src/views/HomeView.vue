@@ -30,6 +30,11 @@ const tools = computed(() => [
     path: '/qzone',
   },
   {
+    title: t('home.tools.editorExtensions.title'),
+    description: t('home.tools.editorExtensions.description'),
+    path: '/editor-extensions',
+  },
+  {
     title: t('home.tools.screensaver.title'),
     description: t('home.tools.screensaver.description'),
     path: '/screensaver',

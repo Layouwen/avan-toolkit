@@ -82,6 +82,49 @@ interface BlogValidationResult {
   warningCount: number;
 }
 
+type EditorKind = 'vscode' | 'cursor';
+type EditorExtensionScope = 'common' | 'vscode' | 'cursor';
+type EditorExtensionInitializeSource = EditorKind | 'both';
+
+interface EditorExtensionRecord {
+  id: string;
+  extensionId: string;
+  name: string;
+  vscodeName: string;
+  cursorName: string;
+  note: string;
+  scope: EditorExtensionScope;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface EditorExtensionWithStatus extends EditorExtensionRecord {
+  status: {
+    vscode: boolean | null;
+    cursor: boolean | null;
+  };
+}
+
+interface EditorExtensionImportResult {
+  added: number;
+  updated: number;
+  skipped: number;
+  records: EditorExtensionRecord[];
+}
+
+interface EditorExtensionCommandResult {
+  success: boolean;
+  message: string;
+}
+
+interface EditorExtensionInitializeResult {
+  added: number;
+  updated: number;
+  skipped: number;
+  failedEditors: EditorKind[];
+  records: EditorExtensionRecord[];
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   getConfig: () => ipcRenderer.invoke('config:get'),
   setConfig: (config: PreloadConfig) => ipcRenderer.invoke('config:set', config),
@@ -102,6 +145,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('blogs:renameFileName', relativePath, fileName),
   selectDirectory: () => ipcRenderer.invoke('dialog:selectDir'),
   startSync: () => ipcRenderer.invoke('sync:start'),
+  pullBlog: () => ipcRenderer.invoke('sync:pullBlog'),
   onSyncLog: (cb: (message: string, level: string) => void) => {
     ipcRenderer.on('sync:log', (_event, message, level) => cb(message, level));
   },
@@ -122,6 +166,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners('logs:event');
     ipcRenderer.invoke('logs:unsubscribe');
   },
+  listEditorExtensions: (): Promise<EditorExtensionRecord[]> => ipcRenderer.invoke('editorExtensions:list'),
+  listEditorExtensionsWithStatus: (): Promise<EditorExtensionWithStatus[]> => ipcRenderer.invoke('editorExtensions:listWithStatus'),
+  saveEditorExtension: (payload: Partial<EditorExtensionRecord>): Promise<EditorExtensionRecord> =>
+    ipcRenderer.invoke('editorExtensions:save', payload),
+  deleteEditorExtension: (recordId: string): Promise<void> => ipcRenderer.invoke('editorExtensions:delete', recordId),
+  exportEditorExtensionsMarkdown: (target: EditorKind | 'common'): Promise<string> =>
+    ipcRenderer.invoke('editorExtensions:exportMarkdown', target),
+  importEditorExtensionsMarkdown: (markdown: string, scope: EditorExtensionScope): Promise<EditorExtensionImportResult> =>
+    ipcRenderer.invoke('editorExtensions:importMarkdown', markdown, scope),
+  initializeEditorExtensions: (source: EditorExtensionInitializeSource): Promise<EditorExtensionInitializeResult> =>
+    ipcRenderer.invoke('editorExtensions:initialize', source),
+  readClipboardText: (): Promise<string> => ipcRenderer.invoke('editorExtensions:readClipboard'),
+  runEditorExtensionCommand: (editor: EditorKind, action: 'install' | 'uninstall', extensionId: string): Promise<EditorExtensionCommandResult> =>
+    ipcRenderer.invoke('editorExtensions:runCommand', editor, action, extensionId),
+  runEditorExtensionBulkCommand: (editor: EditorKind, action: 'install' | 'uninstall', target: EditorKind | 'common'): Promise<EditorExtensionCommandResult[]> =>
+    ipcRenderer.invoke('editorExtensions:runBulkCommand', editor, action, target),
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   recommendActivity: (prompt: string, config: PreloadConfig['agent']) => ipcRenderer.invoke('agent:recommendActivity', prompt, config),
   testQzoneLogin: () => ipcRenderer.invoke('qzone:testLogin'),

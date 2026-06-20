@@ -121,6 +121,51 @@ export interface BlogValidationResult {
   warningCount: number;
 }
 
+export type EditorKind = 'vscode' | 'cursor';
+export type EditorExtensionScope = 'common' | 'vscode' | 'cursor';
+export type EditorExtensionInitializeSource = EditorKind | 'both';
+
+export interface EditorExtensionRecord {
+  id: string;
+  extensionId: string;
+  name: string;
+  vscodeName: string;
+  cursorName: string;
+  note: string;
+  scope: EditorExtensionScope;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EditorExtensionStatus {
+  vscode: boolean | null;
+  cursor: boolean | null;
+}
+
+export interface EditorExtensionWithStatus extends EditorExtensionRecord {
+  status: EditorExtensionStatus;
+}
+
+export interface EditorExtensionImportResult {
+  added: number;
+  updated: number;
+  skipped: number;
+  records: EditorExtensionRecord[];
+}
+
+export interface EditorExtensionCommandResult {
+  success: boolean;
+  message: string;
+}
+
+export interface EditorExtensionInitializeResult {
+  added: number;
+  updated: number;
+  skipped: number;
+  failedEditors: EditorKind[];
+  records: EditorExtensionRecord[];
+}
+
 export interface CreateObsidianBlogPayload {
   title: string;
   directory?: string;
@@ -146,6 +191,7 @@ export interface ElectronAPI {
   selectDirectory: () => Promise<string | null>;
   selectImageFile: () => Promise<string | null>;
   startSync: () => Promise<void>;
+  pullBlog: () => Promise<void>;
   onSyncLog: (cb: (message: string, level: LogLevel) => void) => void;
   offSyncLog: () => void;
   onSyncDone: (cb: (success: boolean, error?: string) => void) => void;
@@ -154,6 +200,16 @@ export interface ElectronAPI {
   openLogFile: () => Promise<void>;
   onLogEvent: (cb: (entry: AppLogEntry) => void) => void;
   offLogEvent: () => void;
+  listEditorExtensions: () => Promise<EditorExtensionRecord[]>;
+  listEditorExtensionsWithStatus: () => Promise<EditorExtensionWithStatus[]>;
+  saveEditorExtension: (payload: Partial<EditorExtensionRecord>) => Promise<EditorExtensionRecord>;
+  deleteEditorExtension: (recordId: string) => Promise<void>;
+  exportEditorExtensionsMarkdown: (target: EditorKind | 'common') => Promise<string>;
+  importEditorExtensionsMarkdown: (markdown: string, scope: EditorExtensionScope) => Promise<EditorExtensionImportResult>;
+  initializeEditorExtensions: (source: EditorExtensionInitializeSource) => Promise<EditorExtensionInitializeResult>;
+  readClipboardText: () => Promise<string>;
+  runEditorExtensionCommand: (editor: EditorKind, action: 'install' | 'uninstall', extensionId: string) => Promise<EditorExtensionCommandResult>;
+  runEditorExtensionBulkCommand: (editor: EditorKind, action: 'install' | 'uninstall', target: EditorKind | 'common') => Promise<EditorExtensionCommandResult[]>;
   openExternal: (url: string) => Promise<void>;
   recommendActivity: (prompt: string, config: AgentConfig) => Promise<AgentResult>;
   testQzoneLogin: () => Promise<QzoneAutomationResult>;

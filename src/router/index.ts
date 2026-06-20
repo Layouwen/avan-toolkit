@@ -20,6 +20,10 @@ const router = createRouter({
       component: () => import('../views/Agent.vue'),
     },
     {
+      path: '/editor-extensions',
+      component: () => import('../views/EditorExtensions.vue'),
+    },
+    {
       path: '/qzone',
       component: () => import('../views/QzonePublisher.vue'),
     },

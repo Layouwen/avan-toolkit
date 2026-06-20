@@ -202,3 +202,19 @@ export async function runSyncPipeline(config: AppConfig, cb: LogCallback): Promi
   await runCommand(hexo.cmd, ['deploy'], hexoBlogDir, cb);
   log(cb, '  hexo deploy 完成', 'success');
 }
+
+export async function runBlogPull(config: AppConfig, cb: LogCallback): Promise<void> {
+  const { hexoBlogDir } = config;
+
+  log(cb, '── Blog Pull  校验 Hexo 项目目录', 'info');
+  if (!hexoBlogDir.trim()) {
+    throw new Error('Hexo 项目目录未配置');
+  }
+  if (!(await directoryExists(hexoBlogDir))) {
+    throw new Error(`Hexo 项目目录不存在: ${hexoBlogDir}`);
+  }
+
+  log(cb, '── Blog Pull  git pull', 'info');
+  await runCommand('git', ['pull'], hexoBlogDir, cb);
+  log(cb, '  git pull 完成', 'success');
+}
