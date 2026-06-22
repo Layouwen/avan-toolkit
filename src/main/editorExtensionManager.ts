@@ -31,8 +31,15 @@ export interface EditorExtensionStatus {
   cursor: boolean | null;
 }
 
+export interface EditorExtensionLocalVsixStatus {
+  exists: boolean;
+  filePath: string;
+  bytes: number;
+}
+
 export interface EditorExtensionWithStatus extends EditorExtensionRecord {
   status: EditorExtensionStatus;
+  localVsix: EditorExtensionLocalVsixStatus;
 }
 
 export interface EditorExtensionImportResult {
@@ -547,18 +554,48 @@ export async function initializeEditorExtensions(source: EditorExtensionInitiali
 
 export async function listEditorExtensionsWithStatus(): Promise<EditorExtensionWithStatus[]> {
   const records = await listEditorExtensions();
-  const [vscodeInstalled, cursorInstalled] = await Promise.all([
+  const [vscodeInstalled, cursorInstalled, localVsixStatuses] = await Promise.all([
     listInstalledExtensionIds('vscode'),
     listInstalledExtensionIds('cursor'),
+    Promise.all(records.map(record => resolveDownloadedEditorExtensionVsix(record.extensionId))),
   ]);
 
-  return records.map(record => ({
+  return records.map((record, index) => ({
     ...record,
     status: {
       vscode: vscodeInstalled ? vscodeInstalled.has(record.extensionId) : null,
       cursor: cursorInstalled ? cursorInstalled.has(record.extensionId) : null,
     },
+    localVsix: {
+      exists: localVsixStatuses[index].exists,
+      filePath: localVsixStatuses[index].filePath,
+      bytes: localVsixStatuses[index].bytes,
+    },
   }));
+}
+
+async function resolveDownloadedEditorExtensionVsix(extensionId: string): Promise<EditorExtensionLocalVsixStatus> {
+  const normalizedId = normalizeExtensionId(extensionId);
+  validateExtensionId(normalizedId);
+  const config = await getConfig();
+  const downloadDir = path.resolve(config.editorExtensions.vsixDownloadDir.trim() || app.getPath('downloads'));
+  const filePath = path.join(downloadDir, `${normalizedId}.vsix`);
+
+  try {
+    const stat = await fs.stat(filePath);
+    return {
+      exists: stat.isFile(),
+      filePath,
+      bytes: stat.isFile() ? stat.size : 0,
+    };
+  }
+  catch {
+    return {
+      exists: false,
+      filePath,
+      bytes: 0,
+    };
+  }
 }
 
 export async function downloadEditorExtensionVsix(
@@ -587,6 +624,41 @@ export async function downloadEditorExtensionVsix(
     filePath,
     bytes: buffer.length,
   };
+}
+
+export async function installDownloadedEditorExtensionVsix(
+  editor: EditorKind,
+  extensionId: string,
+): Promise<EditorExtensionCommandResult> {
+  validateEditor(editor);
+  const normalizedId = normalizeExtensionId(extensionId);
+  validateExtensionId(normalizedId);
+  const vsix = await resolveDownloadedEditorExtensionVsix(normalizedId);
+  if (!vsix.exists) {
+    return {
+      success: false,
+      message: `Downloaded VSIX not found: ${vsix.filePath}`,
+    };
+  }
+
+  const command = await resolveEditorCommand(editor);
+  try {
+    const { stdout, stderr } = await execFileAsync(command, ['--install-extension', vsix.filePath], {
+      timeout: 120000,
+      windowsHide: true,
+    });
+    return {
+      success: true,
+      message: (stdout || stderr || `${command} install ${normalizedId} from ${vsix.filePath} done.`).trim(),
+    };
+  }
+  catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      success: false,
+      message,
+    };
+  }
 }
 
 export async function runEditorExtensionCommand(

@@ -22,6 +22,7 @@ import {
   exportEditorExtensionsMarkdown,
   importEditorExtensionsMarkdown,
   initializeEditorExtensions,
+  installDownloadedEditorExtensionVsix,
   listEditorExtensions,
   listEditorExtensionsWithStatus,
   runEditorExtensionBulkCommand,
@@ -438,6 +439,9 @@ ipcMain.handle('editorExtensions:runBulkCommand', (_event, editor: EditorKind, a
 
 ipcMain.handle('editorExtensions:downloadVsix', (_event, extensionId: string) =>
   downloadEditorExtensionVsix(extensionId));
+
+ipcMain.handle('editorExtensions:installDownloadedVsix', (_event, editor: EditorKind, extensionId: string) =>
+  installDownloadedEditorExtensionVsix(editor, extensionId));
 
 ipcMain.handle('agent:recommendActivity', async (_event, userInput: string, config: AgentInvokeConfig) => {
   const text = userInput.trim();

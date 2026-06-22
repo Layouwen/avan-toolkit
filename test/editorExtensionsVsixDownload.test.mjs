@@ -19,7 +19,9 @@ test('editor extensions can download VSIX for both editors without auto-installi
   const editorExtensionsView = readProjectFile('src/views/EditorExtensions.vue');
   const zhCn = readProjectFile('src/locales/zh-CN.ts');
   const en = readProjectFile('src/locales/en.ts');
-  const managerDownloadFunction = editorExtensionManager.match(/export async function downloadEditorExtensionVsix[\s\S]*?export async function runEditorExtensionCommand/)?.[0] || '';
+  const managerDownloadFunction = editorExtensionManager.match(/export async function downloadEditorExtensionVsix[\s\S]*?export async function installDownloadedEditorExtensionVsix/)?.[0]
+    || editorExtensionManager.match(/export async function downloadEditorExtensionVsix[\s\S]*?export async function runEditorExtensionCommand/)?.[0]
+    || '';
   const viewDownloadFunction = editorExtensionsView.match(/async function downloadVsix[\s\S]*?async function runCommand/)?.[0] || '';
 
   assert.match(configManager, /editorExtensions:\s*\{/);
@@ -73,4 +75,48 @@ test('editor extensions can download VSIX for both editors without auto-installi
   assert.match(en, /downloadVsix:/);
   assert.match(en, /vsixDownloaded:/);
   assert.doesNotMatch(en, /vsixDownloadCanceled:/);
+});
+
+test('editor extensions can install an existing downloaded VSIX when an editor is missing it', () => {
+  const main = readProjectFile('src/main.ts');
+  const preload = readProjectFile('src/preload.ts');
+  const electronApi = readProjectFile('src/electron-api.d.ts');
+  const editorExtensionManager = readProjectFile('src/main/editorExtensionManager.ts');
+  const editorExtensionsView = readProjectFile('src/views/EditorExtensions.vue');
+  const zhCn = readProjectFile('src/locales/zh-CN.ts');
+  const en = readProjectFile('src/locales/en.ts');
+  const localVsixResolver = editorExtensionManager.match(/async function resolveDownloadedEditorExtensionVsix[\s\S]*?export async function installDownloadedEditorExtensionVsix/)?.[0] || '';
+  const managerInstallFunction = editorExtensionManager.match(/export async function installDownloadedEditorExtensionVsix[\s\S]*?export async function runEditorExtensionBulkCommand/)?.[0] || '';
+  const viewInstallFunction = editorExtensionsView.match(/async function installDownloadedVsix[\s\S]*?async function runCommand/)?.[0] || '';
+
+  assert.match(editorExtensionManager, /EditorExtensionLocalVsixStatus/);
+  assert.match(editorExtensionManager, /localVsix:\s*\{/);
+  assert.match(localVsixResolver, /getConfig\(\)/);
+  assert.match(localVsixResolver, /app\.getPath\(['"]downloads['"]\)/);
+  assert.match(localVsixResolver, /path\.join\(downloadDir,\s*`\$\{normalizedId\}\.vsix`\)/);
+  assert.match(localVsixResolver, /fs\.stat\(filePath\)/);
+  assert.match(managerInstallFunction, /--install-extension/);
+  assert.match(managerInstallFunction, /vsix\.filePath/);
+  assert.doesNotMatch(managerInstallFunction, /buildMarketplaceVsixUrl/);
+
+  assert.match(main, /installDownloadedEditorExtensionVsix/);
+  assert.match(main, /ipcMain\.handle\(['"]editorExtensions:installDownloadedVsix['"]/);
+  assert.match(preload, /installDownloadedEditorExtensionVsix:\s*\(editor:\s*EditorKind,\s*extensionId:\s*string\)/);
+  assert.match(preload, /ipcRenderer\.invoke\(['"]editorExtensions:installDownloadedVsix['"],\s*editor,\s*extensionId\)/);
+  assert.match(electronApi, /interface EditorExtensionLocalVsixStatus/);
+  assert.match(electronApi, /localVsix:\s*EditorExtensionLocalVsixStatus/);
+  assert.match(electronApi, /installDownloadedEditorExtensionVsix:\s*\(editor:\s*EditorKind,\s*extensionId:\s*string\)\s*=>\s*Promise<EditorExtensionCommandResult>/);
+
+  assert.match(editorExtensionsView, /canInstallDownloadedVsix\(record,\s*['"]vscode['"]\)/);
+  assert.match(editorExtensionsView, /canInstallDownloadedVsix\(record,\s*['"]cursor['"]\)/);
+  assert.match(editorExtensionsView, /installDownloadedVsix\('vscode',\s*record\.extensionId\)/);
+  assert.match(editorExtensionsView, /installDownloadedVsix\('cursor',\s*record\.extensionId\)/);
+  assert.match(editorExtensionsView, /editorExtensions\.installDownloadedVsix/);
+  assert.match(viewInstallFunction, /electronAPI\.installDownloadedEditorExtensionVsix/);
+  assert.match(viewInstallFunction, /loadRecords\(\)/);
+
+  assert.match(zhCn, /installDownloadedVsix:/);
+  assert.match(zhCn, /downloadedVsixMissing:/);
+  assert.match(en, /installDownloadedVsix:/);
+  assert.match(en, /downloadedVsixMissing:/);
 });

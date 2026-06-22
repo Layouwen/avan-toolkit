@@ -147,8 +147,15 @@ export interface EditorExtensionStatus {
   cursor: boolean | null;
 }
 
+export interface EditorExtensionLocalVsixStatus {
+  exists: boolean;
+  filePath: string;
+  bytes: number;
+}
+
 export interface EditorExtensionWithStatus extends EditorExtensionRecord {
   status: EditorExtensionStatus;
+  localVsix: EditorExtensionLocalVsixStatus;
 }
 
 export interface EditorExtensionImportResult {
@@ -223,6 +230,7 @@ export interface ElectronAPI {
   runEditorExtensionCommand: (editor: EditorKind, action: 'install' | 'uninstall', extensionId: string) => Promise<EditorExtensionCommandResult>;
   runEditorExtensionBulkCommand: (editor: EditorKind, action: 'install' | 'uninstall', target: EditorKind | 'common') => Promise<EditorExtensionCommandResult[]>;
   downloadEditorExtensionVsix: (extensionId: string) => Promise<EditorExtensionVsixDownloadResult>;
+  installDownloadedEditorExtensionVsix: (editor: EditorKind, extensionId: string) => Promise<EditorExtensionCommandResult>;
   openExternal: (url: string) => Promise<void>;
   recommendActivity: (prompt: string, config: AgentConfig) => Promise<AgentResult>;
   testQzoneLogin: () => Promise<QzoneAutomationResult>;

@@ -106,6 +106,7 @@ interface EditorExtensionWithStatus extends EditorExtensionRecord {
     vscode: boolean | null;
     cursor: boolean | null;
   };
+  localVsix: EditorExtensionLocalVsixStatus;
 }
 
 interface EditorExtensionImportResult {
@@ -130,6 +131,12 @@ interface EditorExtensionInitializeResult {
 
 interface EditorExtensionVsixDownloadResult {
   canceled: boolean;
+  filePath: string;
+  bytes: number;
+}
+
+interface EditorExtensionLocalVsixStatus {
+  exists: boolean;
   filePath: string;
   bytes: number;
 }
@@ -194,6 +201,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('editorExtensions:runBulkCommand', editor, action, target),
   downloadEditorExtensionVsix: (extensionId: string): Promise<EditorExtensionVsixDownloadResult> =>
     ipcRenderer.invoke('editorExtensions:downloadVsix', extensionId),
+  installDownloadedEditorExtensionVsix: (editor: EditorKind, extensionId: string): Promise<EditorExtensionCommandResult> =>
+    ipcRenderer.invoke('editorExtensions:installDownloadedVsix', editor, extensionId),
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   recommendActivity: (prompt: string, config: PreloadConfig['agent']) => ipcRenderer.invoke('agent:recommendActivity', prompt, config),
   testQzoneLogin: () => ipcRenderer.invoke('qzone:testLogin'),

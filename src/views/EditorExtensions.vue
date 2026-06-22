@@ -192,6 +192,7 @@ async function loadRecords(withStatus = true) {
       : (await window.electronAPI.listEditorExtensions()).map(record => ({
           ...record,
           status: { vscode: null, cursor: null },
+          localVsix: { exists: false, filePath: '', bytes: 0 },
         }));
   }
   finally {
@@ -354,6 +355,29 @@ async function downloadVsix(editor: EditorKind, extensionId: string) {
   }
   catch (error) {
     message.error(error instanceof Error ? error.message : String(error));
+  }
+  finally {
+    actionKey.value = '';
+  }
+}
+
+function canInstallDownloadedVsix(record: EditorExtensionWithStatus, editor: EditorKind) {
+  return record.localVsix.exists && record.status[editor] === false;
+}
+
+async function installDownloadedVsix(editor: EditorKind, extensionId: string) {
+  const key = `${editor}:installDownloadedVsix:${extensionId}`;
+  actionKey.value = key;
+  try {
+    const result = await window.electronAPI.installDownloadedEditorExtensionVsix(editor, extensionId);
+    lastOutput.value = result.message;
+    if (result.success) {
+      message.success(t('editorExtensions.installDone'));
+      await loadRecords();
+    }
+    else {
+      message.error(result.message || t('editorExtensions.downloadedVsixMissing'));
+    }
   }
   finally {
     actionKey.value = '';
@@ -694,6 +718,16 @@ onMounted(() => {
                           {{ t('editorExtensions.install') }}
                         </NButton>
                         <NButton
+                          v-if="canInstallDownloadedVsix(record, 'vscode')"
+                          size="tiny"
+                          secondary
+                          type="primary"
+                          :loading="actionKey === `vscode:installDownloadedVsix:${record.extensionId}`"
+                          @click="installDownloadedVsix('vscode', record.extensionId)"
+                        >
+                          {{ t('editorExtensions.installDownloadedVsix') }}
+                        </NButton>
+                        <NButton
                           size="tiny"
                           secondary
                           :loading="actionKey === `vscode:downloadVsix:${record.extensionId}`"
@@ -729,6 +763,16 @@ onMounted(() => {
                           @click="runCommand('cursor', 'install', record.extensionId)"
                         >
                           {{ t('editorExtensions.install') }}
+                        </NButton>
+                        <NButton
+                          v-if="canInstallDownloadedVsix(record, 'cursor')"
+                          size="tiny"
+                          secondary
+                          type="primary"
+                          :loading="actionKey === `cursor:installDownloadedVsix:${record.extensionId}`"
+                          @click="installDownloadedVsix('cursor', record.extensionId)"
+                        >
+                          {{ t('editorExtensions.installDownloadedVsix') }}
                         </NButton>
                         <NButton
                           size="tiny"
