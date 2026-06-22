@@ -1,10 +1,12 @@
+import { Buffer } from 'node:buffer';
 import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { promisify } from 'node:util';
-import { app } from 'electron';
+import { app, shell } from 'electron';
 import { v4 as uuidv4 } from 'uuid';
+import { getConfig } from './configManager';
 
 const execFileAsync = promisify(execFile);
 
@@ -51,6 +53,12 @@ export interface EditorExtensionInitializeResult {
   skipped: number;
   failedEditors: EditorKind[];
   records: EditorExtensionRecord[];
+}
+
+export interface EditorExtensionVsixDownloadResult {
+  canceled: boolean;
+  filePath: string;
+  bytes: number;
 }
 
 const STORE_FILE = path.join(app.getPath('userData'), 'editor-extensions.json');
@@ -145,6 +153,11 @@ function validateExtensionId(extensionId: string): void {
   if (!VALID_EXTENSION_ID.test(extensionId)) {
     throw new Error(`Invalid extension id: ${extensionId}`);
   }
+}
+
+function buildMarketplaceVsixUrl(extensionId: string): string {
+  const [publisher, extensionName] = extensionId.split('.');
+  return `https://marketplace.visualstudio.com/_apis/public/gallery/publishers/${encodeURIComponent(publisher)}/vsextensions/${encodeURIComponent(extensionName)}/latest/vspackage`;
 }
 
 function normalizeScope(value: unknown, fallback: EditorExtensionScope = 'common'): EditorExtensionScope {
@@ -546,6 +559,34 @@ export async function listEditorExtensionsWithStatus(): Promise<EditorExtensionW
       cursor: cursorInstalled ? cursorInstalled.has(record.extensionId) : null,
     },
   }));
+}
+
+export async function downloadEditorExtensionVsix(
+  extensionId: string,
+): Promise<EditorExtensionVsixDownloadResult> {
+  const normalizedId = normalizeExtensionId(extensionId);
+  validateExtensionId(normalizedId);
+  const config = await getConfig();
+  const downloadDir = path.resolve(config.editorExtensions.vsixDownloadDir.trim() || app.getPath('downloads'));
+  await fs.mkdir(downloadDir, { recursive: true });
+  const filePath = path.join(downloadDir, `${normalizedId}.vsix`);
+  const response = await fetch(buildMarketplaceVsixUrl(normalizedId));
+  if (!response.ok) {
+    throw new Error(`Download VSIX failed: HTTP ${response.status} ${response.statusText}`);
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length === 0) {
+    throw new Error('Download VSIX failed: empty response.');
+  }
+
+  await fs.writeFile(filePath, buffer);
+  shell.showItemInFolder(filePath);
+  return {
+    canceled: false,
+    filePath,
+    bytes: buffer.length,
+  };
 }
 
 export async function runEditorExtensionCommand(

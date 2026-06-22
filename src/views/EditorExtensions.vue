@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {
+  AppConfig,
   EditorExtensionInitializeSource,
   EditorExtensionRecord,
   EditorExtensionScope,
@@ -36,6 +37,7 @@ const sortField = ref<'extensionId' | 'name' | 'scope' | 'vscodeStatus' | 'curso
 const sortDirection = ref<'asc' | 'desc'>('asc');
 const importMarkdown = ref('');
 const importScope = ref<EditorExtensionScope>('common');
+const vsixDownloadDir = ref('');
 const lastOutput = ref('');
 const markdownPlaceholder = [
   '|序号|插件 id|插件名|插件备注|',
@@ -197,6 +199,35 @@ async function loadRecords(withStatus = true) {
   }
 }
 
+async function loadEditorExtensionConfig() {
+  const config = await window.electronAPI.getConfig();
+  vsixDownloadDir.value = config.editorExtensions.vsixDownloadDir;
+}
+
+function withEditorExtensionConfig(config: AppConfig, nextConfig: AppConfig['editorExtensions']): AppConfig {
+  return {
+    ...config,
+    editorExtensions: {
+      ...config.editorExtensions,
+      ...nextConfig,
+    },
+  };
+}
+
+async function selectVsixDownloadDir() {
+  const dir = await window.electronAPI.selectDirectory();
+  if (!dir) {
+    return;
+  }
+
+  const config = await window.electronAPI.getConfig();
+  await window.electronAPI.setConfig(withEditorExtensionConfig(config, {
+    vsixDownloadDir: dir,
+  }));
+  vsixDownloadDir.value = dir;
+  message.success(t('editorExtensions.vsixDownloadDirSaved'));
+}
+
 async function saveRecord() {
   if (!form.extensionId?.trim()) {
     message.warning(t('editorExtensions.extensionIdRequired'));
@@ -310,6 +341,25 @@ function statusLabel(value: boolean | null) {
   return t('editorExtensions.unknown');
 }
 
+async function downloadVsix(editor: EditorKind, extensionId: string) {
+  const key = `${editor}:downloadVsix:${extensionId}`;
+  actionKey.value = key;
+  try {
+    const result = await window.electronAPI.downloadEditorExtensionVsix(extensionId);
+    lastOutput.value = t('editorExtensions.vsixDownloaded', {
+      path: result.filePath,
+      bytes: result.bytes,
+    });
+    message.success(lastOutput.value);
+  }
+  catch (error) {
+    message.error(error instanceof Error ? error.message : String(error));
+  }
+  finally {
+    actionKey.value = '';
+  }
+}
+
 async function runCommand(editor: EditorKind, action: 'install' | 'uninstall', extensionId: string) {
   const key = `${editor}:${action}:${extensionId}`;
   actionKey.value = key;
@@ -351,6 +401,7 @@ async function runBulk(editor: EditorKind, action: 'install' | 'uninstall', targ
 
 onMounted(() => {
   void loadRecords();
+  void loadEditorExtensionConfig();
 });
 </script>
 
@@ -404,6 +455,24 @@ onMounted(() => {
                   {{ option.label }}
                 </NButton>
               </div>
+            </NSpace>
+          </NCard>
+
+          <NCard :title="t('editorExtensions.downloadSettingsTitle')" embedded>
+            <NSpace vertical>
+              <p class="m-0 text-sm leading-6 text-[#94a3b8]">
+                {{ t('editorExtensions.downloadSettingsDescription') }}
+              </p>
+              <NInput
+                :value="vsixDownloadDir || t('editorExtensions.systemDownloads')"
+                readonly
+                :placeholder="t('editorExtensions.vsixDownloadDirPlaceholder')"
+              />
+              <NSpace justify="end">
+                <NButton secondary @click="selectVsixDownloadDir">
+                  {{ t('editorExtensions.selectVsixDownloadDir') }}
+                </NButton>
+              </NSpace>
             </NSpace>
           </NCard>
 
@@ -627,6 +696,14 @@ onMounted(() => {
                         <NButton
                           size="tiny"
                           secondary
+                          :loading="actionKey === `vscode:downloadVsix:${record.extensionId}`"
+                          @click="downloadVsix('vscode', record.extensionId)"
+                        >
+                          {{ t('editorExtensions.downloadVsix') }}
+                        </NButton>
+                        <NButton
+                          size="tiny"
+                          secondary
                           type="error"
                           :loading="actionKey === `vscode:uninstall:${record.extensionId}`"
                           @click="runCommand('vscode', 'uninstall', record.extensionId)"
@@ -652,6 +729,14 @@ onMounted(() => {
                           @click="runCommand('cursor', 'install', record.extensionId)"
                         >
                           {{ t('editorExtensions.install') }}
+                        </NButton>
+                        <NButton
+                          size="tiny"
+                          secondary
+                          :loading="actionKey === `cursor:downloadVsix:${record.extensionId}`"
+                          @click="downloadVsix('cursor', record.extensionId)"
+                        >
+                          {{ t('editorExtensions.downloadVsix') }}
                         </NButton>
                         <NButton
                           size="tiny"

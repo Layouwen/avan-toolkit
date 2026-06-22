@@ -9,6 +9,10 @@ export interface ScreensaverConfig {
   backgroundImagePath: string;
 }
 
+export interface EditorExtensionsConfig {
+  vsixDownloadDir: string;
+}
+
 export interface ScreensaverStatus {
   enabled: boolean;
   intervalSeconds: number;
@@ -24,6 +28,7 @@ export interface AppConfig {
   agent: AgentConfig;
   qzone: QzoneConfig;
   screensaver: ScreensaverConfig;
+  editorExtensions: EditorExtensionsConfig;
 }
 
 export interface AgentConfig {
@@ -166,6 +171,12 @@ export interface EditorExtensionInitializeResult {
   records: EditorExtensionRecord[];
 }
 
+export interface EditorExtensionVsixDownloadResult {
+  canceled: boolean;
+  filePath: string;
+  bytes: number;
+}
+
 export interface CreateObsidianBlogPayload {
   title: string;
   directory?: string;
@@ -211,6 +222,7 @@ export interface ElectronAPI {
   copyEditorExtensionId: (extensionId: string) => Promise<void>;
   runEditorExtensionCommand: (editor: EditorKind, action: 'install' | 'uninstall', extensionId: string) => Promise<EditorExtensionCommandResult>;
   runEditorExtensionBulkCommand: (editor: EditorKind, action: 'install' | 'uninstall', target: EditorKind | 'common') => Promise<EditorExtensionCommandResult[]>;
+  downloadEditorExtensionVsix: (extensionId: string) => Promise<EditorExtensionVsixDownloadResult>;
   openExternal: (url: string) => Promise<void>;
   recommendActivity: (prompt: string, config: AgentConfig) => Promise<AgentResult>;
   testQzoneLogin: () => Promise<QzoneAutomationResult>;

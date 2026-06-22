@@ -26,6 +26,9 @@ export interface AppConfig {
     backgroundColor: string;
     backgroundImagePath: string;
   };
+  editorExtensions: {
+    vsixDownloadDir: string;
+  };
 }
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
@@ -56,6 +59,9 @@ const DEFAULT_CONFIG: AppConfig = {
     backgroundColor: '#1a3a2a',
     backgroundImagePath: '',
   },
+  editorExtensions: {
+    vsixDownloadDir: '',
+  },
 };
 
 export async function getConfig(): Promise<AppConfig> {
@@ -76,6 +82,10 @@ export async function getConfig(): Promise<AppConfig> {
       screensaver: {
         ...DEFAULT_CONFIG.screensaver,
         ...parsed.screensaver,
+      },
+      editorExtensions: {
+        ...DEFAULT_CONFIG.editorExtensions,
+        ...parsed.editorExtensions,
       },
     };
   }

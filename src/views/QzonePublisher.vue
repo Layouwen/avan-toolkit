@@ -46,6 +46,9 @@ const config = ref<AppConfig>({
     backgroundColor: '#1a3a2a',
     backgroundImagePath: '',
   },
+  editorExtensions: {
+    vsixDownloadDir: '',
+  },
 });
 const content = ref('');
 const running = ref(false);

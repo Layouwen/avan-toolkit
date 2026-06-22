@@ -27,6 +27,9 @@ interface PreloadConfig {
     backgroundColor: string;
     backgroundImagePath: string;
   };
+  editorExtensions: {
+    vsixDownloadDir: string;
+  };
 }
 
 interface CreateObsidianBlogPayload {
@@ -125,6 +128,12 @@ interface EditorExtensionInitializeResult {
   records: EditorExtensionRecord[];
 }
 
+interface EditorExtensionVsixDownloadResult {
+  canceled: boolean;
+  filePath: string;
+  bytes: number;
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   getConfig: () => ipcRenderer.invoke('config:get'),
   setConfig: (config: PreloadConfig) => ipcRenderer.invoke('config:set', config),
@@ -183,6 +192,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('editorExtensions:runCommand', editor, action, extensionId),
   runEditorExtensionBulkCommand: (editor: EditorKind, action: 'install' | 'uninstall', target: EditorKind | 'common'): Promise<EditorExtensionCommandResult[]> =>
     ipcRenderer.invoke('editorExtensions:runBulkCommand', editor, action, target),
+  downloadEditorExtensionVsix: (extensionId: string): Promise<EditorExtensionVsixDownloadResult> =>
+    ipcRenderer.invoke('editorExtensions:downloadVsix', extensionId),
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   recommendActivity: (prompt: string, config: PreloadConfig['agent']) => ipcRenderer.invoke('agent:recommendActivity', prompt, config),
   testQzoneLogin: () => ipcRenderer.invoke('qzone:testLogin'),

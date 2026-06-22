@@ -18,6 +18,7 @@ import { validateObsidianBlogs } from './main/blogValidator';
 import { getConfig, setConfig } from './main/configManager';
 import {
   deleteEditorExtension,
+  downloadEditorExtensionVsix,
   exportEditorExtensionsMarkdown,
   importEditorExtensionsMarkdown,
   initializeEditorExtensions,
@@ -434,6 +435,9 @@ ipcMain.handle('editorExtensions:runCommand', (_event, editor: EditorKind, actio
 
 ipcMain.handle('editorExtensions:runBulkCommand', (_event, editor: EditorKind, action: 'install' | 'uninstall', target: EditorKind | 'common') =>
   runEditorExtensionBulkCommand(editor, action, target));
+
+ipcMain.handle('editorExtensions:downloadVsix', (_event, extensionId: string) =>
+  downloadEditorExtensionVsix(extensionId));
 
 ipcMain.handle('agent:recommendActivity', async (_event, userInput: string, config: AgentInvokeConfig) => {
   const text = userInput.trim();
