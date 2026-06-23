@@ -26,6 +26,7 @@ function loadManualUpdateManager(platform = process.platform, arch = process.arc
   Object.defineProperty(process, 'arch', { value: arch });
 
   try {
+    const openedUrls = [];
     const localRequire = (id) => {
       if (id === 'electron') {
         return {
@@ -33,7 +34,7 @@ function loadManualUpdateManager(platform = process.platform, arch = process.arc
             getVersion: () => '1.0.1',
           },
           shell: {
-            openExternal: async () => {},
+            openExternal: async url => openedUrls.push(url),
           },
         };
       }
@@ -43,6 +44,7 @@ function loadManualUpdateManager(platform = process.platform, arch = process.arc
     // eslint-disable-next-line no-new-func
     const factory = new Function('require', 'exports', 'module', 'process', compiled);
     factory(localRequire, module.exports, module, process);
+    module.exports.openedUrls = openedUrls;
     return module.exports;
   }
   finally {
@@ -72,6 +74,31 @@ test('manual update asset selection prefers current macOS architecture DMG', () 
   ]);
 
   assert.equal(asset.name, 'AvanToolkit-1.0.2-arm64.dmg');
+});
+
+test('manual update opens only GitHub release URLs case-insensitively', async () => {
+  const manager = loadManualUpdateManager();
+  const downloadUrl = 'https://github.com/Layouwen/avan-toolkit/releases/download/v1.0.3/AvanToolkit-1.0.3-arm64.dmg';
+  const releaseUrl = 'https://github.com/layouwen/avan-toolkit/releases/tag/v1.0.3';
+
+  await manager.openUpdateDownload(downloadUrl);
+  await manager.openUpdateDownload(releaseUrl);
+
+  assert.deepEqual(manager.openedUrls, [downloadUrl, releaseUrl]);
+});
+
+test('manual update rejects non-release update URLs', async () => {
+  const manager = loadManualUpdateManager();
+  const invalidUrls = [
+    'https://evil.com/layouwen/avan-toolkit/releases/download/v1.0.3/file.dmg',
+    'http://github.com/layouwen/avan-toolkit/releases/download/v1.0.3/file.dmg',
+    'https://github.com/layouwen/avan-toolkit/issues/1',
+    'not-a-url',
+  ];
+
+  for (const invalidUrl of invalidUrls) {
+    await assert.rejects(() => manager.openUpdateDownload(invalidUrl), /Invalid update URL/);
+  }
 });
 
 test('manual update is wired as a manual GitHub release check', () => {

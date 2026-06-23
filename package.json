@@ -1,7 +1,7 @@
 {
   "name": "avan-toolkit",
   "productName": "AvanToolkit",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "description": "⚡ A cross-platform desktop toolbox built with Electron. Integrates daily utilities for developers and creators. 一个用 Electron 构建的跨平台桌面工具箱，集成日常实用功能.",
   "author": {

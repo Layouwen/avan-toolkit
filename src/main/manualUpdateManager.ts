@@ -168,7 +168,20 @@ export async function getUpdateInfo(): Promise<AppUpdateInfo> {
 
 export async function openUpdateDownload(url: string): Promise<void> {
   const target = url.trim();
-  if (!target.startsWith('https://github.com/layouwen/avan-toolkit/releases/')) {
+  let parsedURL: URL;
+  try {
+    parsedURL = new URL(target);
+  }
+  catch {
+    throw new Error('Invalid update URL.');
+  }
+
+  const normalizedPath = parsedURL.pathname.toLowerCase();
+  if (
+    parsedURL.protocol !== 'https:'
+    || parsedURL.hostname !== 'github.com'
+    || !normalizedPath.startsWith('/layouwen/avan-toolkit/releases/')
+  ) {
     throw new Error('Invalid update URL.');
   }
 
