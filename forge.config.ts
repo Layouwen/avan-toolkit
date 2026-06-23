@@ -49,6 +49,18 @@ function hasPackagedChromium(): boolean {
 }
 
 const config: ForgeConfig = {
+  publishers: [
+    {
+      name: '@electron-forge/publisher-github',
+      config: {
+        repository: {
+          owner: 'layouwen',
+          name: 'avan-toolkit',
+        },
+        prerelease: true,
+      },
+    },
+  ],
   packagerConfig: {
     asar: {
       unpack: '**/*.node',

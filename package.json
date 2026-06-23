@@ -1,7 +1,7 @@
 {
   "name": "avan-toolkit",
   "productName": "AvanToolkit",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "⚡ A cross-platform desktop toolbox built with Electron. Integrates daily utilities for developers and creators. 一个用 Electron 构建的跨平台桌面工具箱，集成日常实用功能.",
   "author": {
@@ -9,6 +9,10 @@
     "email": "layouwen@gmail.com"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/layouwen/avan-toolkit.git"
+  },
   "keywords": [],
   "main": ".vite/build/main.js",
   "scripts": {
@@ -28,6 +32,7 @@
     "openai": "^6.39.0",
     "pinia": "^3.0.4",
     "playwright": "^1.60.0",
+    "update-electron-app": "^3.2.0",
     "uuid": "^14.0.0",
     "vue": "^3.5.34",
     "vue-i18n": "^11.4.4",
@@ -44,6 +49,7 @@
     "@electron-forge/plugin-auto-unpack-natives": "^7.11.2",
     "@electron-forge/plugin-fuses": "^7.11.2",
     "@electron-forge/plugin-vite": "^7.11.2",
+    "@electron-forge/publisher-github": "^7.11.2",
     "@electron/fuses": "^1.8.0",
     "@tailwindcss/vite": "^4.3.0",
     "@types/electron-squirrel-startup": "^1.0.2",
