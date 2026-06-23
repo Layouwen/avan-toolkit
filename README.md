@@ -149,6 +149,12 @@ npm run publish  # 发布（需预先配置）
 
 `npm run package` 和 `npm run make` 会先执行 `npm run install:playwright`，把 Chromium 下载到 `.playwright-browsers/` 并作为 Electron `Resources` 资源随应用打包。Qzone 自动化在打包后会从内置资源加载 Chromium，不依赖目标机器预先安装 Playwright 浏览器。
 
+## 版本更新
+
+应用在“关于”页提供手动检查更新。当前方案通过 GitHub Releases API 检查最新 stable release，发现新版本后引导用户下载对应平台安装包并手动安装；macOS 未签名阶段不使用自动替换安装。
+
+发布新版本前递增 `package.json` 版本号，执行 `npm run publish` 上传 published stable release。不要使用 draft 或 prerelease，否则应用不会将其作为更新候选。
+
 ## 项目架构
 
 ```text

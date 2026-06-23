@@ -141,7 +141,20 @@ interface EditorExtensionLocalVsixStatus {
   bytes: number;
 }
 
+interface AppUpdateInfo {
+  currentVersion: string;
+  latestVersion: string;
+  hasUpdate: boolean;
+  releaseName: string;
+  releaseNotes: string;
+  releaseUrl: string;
+  downloadUrl: string;
+  downloadAssetName: string;
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
+  getUpdateInfo: (): Promise<AppUpdateInfo> => ipcRenderer.invoke('updates:getInfo'),
+  openUpdateDownload: (url: string): Promise<void> => ipcRenderer.invoke('updates:openDownload', url),
   getConfig: () => ipcRenderer.invoke('config:get'),
   setConfig: (config: PreloadConfig) => ipcRenderer.invoke('config:set', config),
   listObsidianBlogs: () => ipcRenderer.invoke('blogs:list'),

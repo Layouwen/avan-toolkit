@@ -160,6 +160,25 @@ export default {
   about: {
     title: 'About',
     language: '中文',
+    update: {
+      currentVersion: 'Current Version',
+      check: 'Check Updates',
+      download: 'Download Update',
+      openRelease: 'Open Release',
+      checking: 'Checking for updates...',
+      latest: 'You are already on the latest version.',
+      available: 'Version v{version} is available. Download it and install manually.',
+      errorPrefix: 'Update check failed: ',
+      asset: 'Download file: {name}',
+      noAsset: 'No installer matched this platform. The release page will open.',
+      status: {
+        idle: 'Idle',
+        checking: 'Checking',
+        latest: 'Latest',
+        available: 'Available',
+        error: 'Failed',
+      },
+    },
     links: {
       github: 'GitHub',
       blog: 'Blog',

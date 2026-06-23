@@ -160,6 +160,25 @@ export default {
   about: {
     title: '关于',
     language: 'English',
+    update: {
+      currentVersion: '当前版本',
+      check: '检查更新',
+      download: '下载新版',
+      openRelease: '打开发布页',
+      checking: '正在检查更新...',
+      latest: '当前已经是最新版本。',
+      available: '发现新版本 v{version}，请下载后手动安装。',
+      errorPrefix: '检查更新失败：',
+      asset: '下载文件：{name}',
+      noAsset: '未找到适合当前平台的安装包，将打开发布页。',
+      status: {
+        idle: '待检查',
+        checking: '检查中',
+        latest: '已最新',
+        available: '有更新',
+        error: '失败',
+      },
+    },
     links: {
       github: 'GitHub',
       blog: '博客',

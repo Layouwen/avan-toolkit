@@ -1,7 +1,7 @@
 {
   "name": "avan-toolkit",
   "productName": "AvanToolkit",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "⚡ A cross-platform desktop toolbox built with Electron. Integrates daily utilities for developers and creators. 一个用 Electron 构建的跨平台桌面工具箱，集成日常实用功能.",
   "author": {
@@ -24,7 +24,6 @@
     "install:playwright": "node scripts/install-playwright-browsers.mjs"
   },
   "dependencies": {
-    "dotenv": "^17.4.2",
     "electron-log": "^5.4.4",
     "electron-squirrel-startup": "^1.0.1",
     "gray-matter": "^4.0.3",
@@ -32,7 +31,6 @@
     "openai": "^6.39.0",
     "pinia": "^3.0.4",
     "playwright": "^1.60.0",
-    "update-electron-app": "^3.2.0",
     "uuid": "^14.0.0",
     "vue": "^3.5.34",
     "vue-i18n": "^11.4.4",
@@ -55,6 +53,7 @@
     "@types/electron-squirrel-startup": "^1.0.2",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-vue": "^5.2.4",
+    "dotenv": "^17.4.2",
     "electron": "42.2.0",
     "eslint": "^9.39.4",
     "eslint-plugin-format": "^2.0.1",

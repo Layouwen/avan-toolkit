@@ -191,7 +191,20 @@ export interface CreateObsidianBlogPayload {
   categories?: string[];
 }
 
+export interface AppUpdateInfo {
+  currentVersion: string;
+  latestVersion: string;
+  hasUpdate: boolean;
+  releaseName: string;
+  releaseNotes: string;
+  releaseUrl: string;
+  downloadUrl: string;
+  downloadAssetName: string;
+}
+
 export interface ElectronAPI {
+  getUpdateInfo: () => Promise<AppUpdateInfo>;
+  openUpdateDownload: (url: string) => Promise<void>;
   getConfig: () => Promise<AppConfig>;
   setConfig: (config: AppConfig) => Promise<void>;
   listObsidianBlogs: () => Promise<ObsidianBlog[]>;

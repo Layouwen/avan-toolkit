@@ -9,6 +9,7 @@ import { MakerZIP } from '@electron-forge/maker-zip';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import 'dotenv/config';
 
 const PLAYWRIGHT_BROWSERS_DIR = '.playwright-browsers';
 const APP_ICON = './assets/icons/AvanToolkit';
@@ -57,7 +58,7 @@ const config: ForgeConfig = {
           owner: 'layouwen',
           name: 'avan-toolkit',
         },
-        prerelease: true,
+        prerelease: false,
       },
     },
   ],

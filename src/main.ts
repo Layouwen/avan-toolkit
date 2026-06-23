@@ -5,7 +5,6 @@ import path from 'node:path';
 import process from 'node:process';
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 import started from 'electron-squirrel-startup';
-import { updateElectronApp } from 'update-electron-app';
 import { runAgentRecommendation } from './main/agentDemo';
 import {
   createObsidianBlog,
@@ -37,11 +36,10 @@ import {
   listLogs,
   subscribeLogs,
 } from './main/logger';
+import { getUpdateInfo, openUpdateDownload } from './main/manualUpdateManager';
 import { closeQzoneSession, listQzoneShuoshuo, loadMoreQzoneShuoshuo, publishQzoneShuoshuo, testQzoneLogin } from './main/qzoneAutomation';
 import { initializeScreensaver, updateScreensaverConfig } from './main/screensaverManager';
 import { runBlogPull, runSyncPipeline } from './main/syncPipeline';
-
-updateElectronApp();
 
 interface AgentInvokeConfig {
   baseURL: string;
@@ -194,6 +192,10 @@ app.on('before-quit', () => {
 
 // IPC Handlers
 ipcMain.handle('shell:openExternal', (_event, url: string) => shell.openExternal(url));
+
+ipcMain.handle('updates:getInfo', () => getUpdateInfo());
+
+ipcMain.handle('updates:openDownload', (_event, url: string) => openUpdateDownload(url));
 
 ipcMain.handle('config:get', () => getConfig());
 

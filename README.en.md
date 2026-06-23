@@ -149,6 +149,12 @@ npm run publish  # Publish (requires setup)
 
 `npm run package` and `npm run make` run `npm run install:playwright` first, downloading Chromium into `.playwright-browsers/` and packaging it as an Electron `Resources` asset. After packaging, Qzone automation loads Chromium from the embedded resource directory instead of requiring Playwright browsers to be installed on the target machine.
 
+## App Updates
+
+The About page provides a manual update check. This implementation queries the GitHub Releases API for the latest stable release, then opens the matching installer or release page for manual installation; unsigned macOS builds do not use automatic replacement installs.
+
+Before publishing a new version, increment the `package.json` version and run `npm run publish` to upload a published stable release. Drafts and prereleases are ignored by the app update check.
+
 ## Architecture
 
 ```text
