@@ -58,6 +58,7 @@ const config: ForgeConfig = {
           owner: 'layouwen',
           name: 'avan-toolkit',
         },
+        draft: false,
         prerelease: false,
       },
     },
