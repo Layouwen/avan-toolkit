@@ -1,168 +1,40 @@
 // See the Electron documentation for details on how to use preload scripts:
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 
+import type {
+  AgentConfig,
+  AppConfig,
+  AppLogEntry,
+  AppUpdateInfo,
+  BlogValidationResult,
+  BlogValidationSource,
+  CreateObsidianBlogPayload,
+  EditorExtensionCommandResult,
+  EditorExtensionImportResult,
+  EditorExtensionInitializeResult,
+  EditorExtensionInitializeSource,
+  EditorExtensionRecord,
+  EditorExtensionScope,
+  EditorExtensionVsixDownloadResult,
+  EditorExtensionWithStatus,
+  EditorKind,
+  LogFilters,
+  ScreensaverConfig,
+  ScreensaverStatus,
+} from './shared/electronApiTypes';
 import { contextBridge, ipcRenderer } from 'electron';
-
-interface PreloadConfig {
-  obsidianBlogDir: string;
-  hexoBlogDir: string;
-  hexoEditorCommand: 'cursor' | 'code';
-  locale: string;
-  agent: {
-    baseURL: string;
-    model: string;
-    apiKey: string;
-  };
-  qzone: {
-    loginMode: 'credentials' | 'qr';
-    qqNumber: string;
-    qqPassword: string;
-    playwrightProfileDir: string;
-  };
-  screensaver: {
-    enabled: boolean;
-    triggerIntervalMinutes: number;
-    countdownSeconds: number;
-    backgroundType: 'color' | 'image';
-    backgroundColor: string;
-    backgroundImagePath: string;
-  };
-  editorExtensions: {
-    vsixDownloadDir: string;
-  };
-}
-
-interface CreateObsidianBlogPayload {
-  title: string;
-  directory?: string;
-  tags?: string[];
-  categories?: string[];
-}
-
-interface AppLogEntry {
-  id: string;
-  module: 'blogSync' | 'qzone' | 'agent';
-  scope: string;
-  runId: string;
-  level: 'info' | 'success' | 'warn' | 'error';
-  message: string;
-  timestamp: string;
-  sensitive?: boolean;
-}
-
-interface ScreensaverStatus {
-  enabled: boolean;
-  intervalSeconds: number;
-  nextTriggerAt: number | null;
-  remainingSeconds: number;
-}
-
-interface LogFilters {
-  module?: AppLogEntry['module'];
-  level?: AppLogEntry['level'];
-  runId?: string;
-  sensitive?: boolean;
-  limit?: number;
-}
-
-interface BlogValidationIssue {
-  id: string;
-  source: 'obsidian' | 'hexo';
-  relativePath: string;
-  absolutePath: string;
-  field: string;
-  message: string;
-  severity: 'error' | 'warn';
-}
-
-interface BlogValidationResult {
-  ok: boolean;
-  issues: BlogValidationIssue[];
-  checkedFiles: number;
-  obsidianCheckedFiles: number;
-  hexoCheckedFiles: number;
-  errorCount: number;
-  warningCount: number;
-}
-
-type EditorKind = 'vscode' | 'cursor';
-type EditorExtensionScope = 'common' | 'vscode' | 'cursor';
-type EditorExtensionInitializeSource = EditorKind | 'both';
-
-interface EditorExtensionRecord {
-  id: string;
-  extensionId: string;
-  name: string;
-  vscodeName: string;
-  cursorName: string;
-  note: string;
-  scope: EditorExtensionScope;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface EditorExtensionWithStatus extends EditorExtensionRecord {
-  status: {
-    vscode: boolean | null;
-    cursor: boolean | null;
-  };
-  localVsix: EditorExtensionLocalVsixStatus;
-}
-
-interface EditorExtensionImportResult {
-  added: number;
-  updated: number;
-  skipped: number;
-  records: EditorExtensionRecord[];
-}
-
-interface EditorExtensionCommandResult {
-  success: boolean;
-  message: string;
-}
-
-interface EditorExtensionInitializeResult {
-  added: number;
-  updated: number;
-  skipped: number;
-  failedEditors: EditorKind[];
-  records: EditorExtensionRecord[];
-}
-
-interface EditorExtensionVsixDownloadResult {
-  canceled: boolean;
-  filePath: string;
-  bytes: number;
-}
-
-interface EditorExtensionLocalVsixStatus {
-  exists: boolean;
-  filePath: string;
-  bytes: number;
-}
-
-interface AppUpdateInfo {
-  currentVersion: string;
-  latestVersion: string;
-  hasUpdate: boolean;
-  releaseName: string;
-  releaseNotes: string;
-  releaseUrl: string;
-  downloadUrl: string;
-  downloadAssetName: string;
-}
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getUpdateInfo: (): Promise<AppUpdateInfo> => ipcRenderer.invoke('updates:getInfo'),
   openUpdateDownload: (url: string): Promise<void> => ipcRenderer.invoke('updates:openDownload', url),
   getConfig: () => ipcRenderer.invoke('config:get'),
-  setConfig: (config: PreloadConfig) => ipcRenderer.invoke('config:set', config),
+  setConfig: (config: AppConfig) => ipcRenderer.invoke('config:set', config),
   listObsidianBlogs: () => ipcRenderer.invoke('blogs:list'),
   validateObsidianBlogs: (): Promise<BlogValidationResult> => ipcRenderer.invoke('blogs:validate'),
   openObsidianBlog: (relativePath: string) => ipcRenderer.invoke('blogs:openInEditor', relativePath),
-  openBlogValidationIssue: (source: 'obsidian' | 'hexo', absolutePath: string) =>
+  openBlogValidationIssue: (source: BlogValidationSource, absolutePath: string) =>
     ipcRenderer.invoke('blogs:openValidationIssue', source, absolutePath),
-  openConfiguredBlogDir: (kind: 'obsidian' | 'hexo') => ipcRenderer.invoke('blogs:openConfiguredDir', kind),
+  openConfiguredBlogDir: (kind: BlogValidationSource) => ipcRenderer.invoke('blogs:openConfiguredDir', kind),
   openObsidianPage: () => ipcRenderer.invoke('blogs:openObsidianPage'),
   openHexoProjectInEditor: () => ipcRenderer.invoke('blogs:openHexoProjectInEditor'),
   createObsidianBlog: (payload: CreateObsidianBlogPayload) => ipcRenderer.invoke('blogs:create', payload),
@@ -217,7 +89,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   installDownloadedEditorExtensionVsix: (editor: EditorKind, extensionId: string): Promise<EditorExtensionCommandResult> =>
     ipcRenderer.invoke('editorExtensions:installDownloadedVsix', editor, extensionId),
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
-  recommendActivity: (prompt: string, config: PreloadConfig['agent']) => ipcRenderer.invoke('agent:recommendActivity', prompt, config),
+  recommendActivity: (prompt: string, config: AgentConfig) => ipcRenderer.invoke('agent:recommendActivity', prompt, config),
   testQzoneLogin: () => ipcRenderer.invoke('qzone:testLogin'),
   publishQzoneShuoshuo: (content: string) => ipcRenderer.invoke('qzone:publishShuoshuo', content),
   listQzoneShuoshuo: () => ipcRenderer.invoke('qzone:listShuoshuo'),
@@ -226,7 +98,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeScreensaver: () => ipcRenderer.invoke('screensaver:close'),
   getScreensaverConfig: () => ipcRenderer.invoke('screensaver:getConfig'),
   getScreensaverStatus: (): Promise<ScreensaverStatus> => ipcRenderer.invoke('screensaver:getStatus'),
-  onScreensaverConfig: (cb: (config: PreloadConfig['screensaver']) => void) => {
+  onScreensaverConfig: (cb: (config: ScreensaverConfig) => void) => {
     ipcRenderer.on('screensaver:config', (_event, config) => cb(config));
   },
   offScreensaverConfig: () => {

@@ -15,6 +15,7 @@ test('editor extensions can download VSIX for both editors without auto-installi
   const editorExtensionsIpc = readProjectFile('src/main/ipc/editorExtensionsIpc.ts');
   const preload = readProjectFile('src/preload.ts');
   const electronApi = readProjectFile('src/electron-api.d.ts');
+  const sharedTypes = readProjectFile('src/shared/electronApiTypes.ts');
   const editorExtensionManager = readProjectFile('src/main/editorExtensionManager.ts');
   const editorExtensionsView = readProjectFile('src/views/EditorExtensions.vue');
   const editorExtensionsListCard = readProjectFile('src/features/editor-extensions/components/EditorExtensionsListCard.vue');
@@ -30,9 +31,9 @@ test('editor extensions can download VSIX for both editors without auto-installi
 
   assert.match(configManager, /editorExtensions:\s*\{/);
   assert.match(configManager, /vsixDownloadDir:\s*''/);
-  assert.match(preload, /editorExtensions:\s*\{\s*vsixDownloadDir:\s*string;\s*\}/);
-  assert.match(electronApi, /editorExtensions:\s*EditorExtensionsConfig/);
-  assert.match(electronApi, /interface EditorExtensionsConfig\s*\{\s*vsixDownloadDir:\s*string;/);
+  assert.match(sharedTypes, /editorExtensions:\s*EditorExtensionsConfig/);
+  assert.match(sharedTypes, /interface EditorExtensionsConfig\s*\{\s*vsixDownloadDir:\s*string;/);
+  assert.match(electronApi, /export type\s*\{[\s\S]*EditorExtensionsConfig[\s\S]*\}\s*from\s*['"]\.\/shared\/electronApiTypes['"]/);
 
   assert.match(editorExtensionManager, /EditorExtensionVsixDownloadResult/);
   assert.match(editorExtensionManager, /downloadEditorExtensionVsix/);
@@ -51,7 +52,8 @@ test('editor extensions can download VSIX for both editors without auto-installi
   assert.match(editorExtensionsIpc, /ipcMain\.handle\(['"]editorExtensions:downloadVsix['"]/);
   assert.match(preload, /downloadEditorExtensionVsix:\s*\(extensionId:\s*string\)/);
   assert.match(preload, /ipcRenderer\.invoke\(['"]editorExtensions:downloadVsix['"],\s*extensionId\)/);
-  assert.match(electronApi, /interface EditorExtensionVsixDownloadResult/);
+  assert.match(sharedTypes, /interface EditorExtensionVsixDownloadResult/);
+  assert.match(electronApi, /export type\s*\{[\s\S]*EditorExtensionVsixDownloadResult[\s\S]*\}\s*from\s*['"]\.\/shared\/electronApiTypes['"]/);
   assert.match(electronApi, /downloadEditorExtensionVsix:\s*\(extensionId:\s*string\)\s*=>\s*Promise<EditorExtensionVsixDownloadResult>/);
 
   assert.match(editorExtensionsUi, /vsixDownloadDir/);
@@ -87,6 +89,7 @@ test('editor extensions can install an existing downloaded VSIX when an editor i
   const editorExtensionsIpc = readProjectFile('src/main/ipc/editorExtensionsIpc.ts');
   const preload = readProjectFile('src/preload.ts');
   const electronApi = readProjectFile('src/electron-api.d.ts');
+  const sharedTypes = readProjectFile('src/shared/electronApiTypes.ts');
   const editorExtensionManager = readProjectFile('src/main/editorExtensionManager.ts');
   const editorExtensionsView = readProjectFile('src/views/EditorExtensions.vue');
   const editorExtensionsListCard = readProjectFile('src/features/editor-extensions/components/EditorExtensionsListCard.vue');
@@ -112,8 +115,9 @@ test('editor extensions can install an existing downloaded VSIX when an editor i
   assert.match(editorExtensionsIpc, /ipcMain\.handle\(['"]editorExtensions:installDownloadedVsix['"]/);
   assert.match(preload, /installDownloadedEditorExtensionVsix:\s*\(editor:\s*EditorKind,\s*extensionId:\s*string\)/);
   assert.match(preload, /ipcRenderer\.invoke\(['"]editorExtensions:installDownloadedVsix['"],\s*editor,\s*extensionId\)/);
-  assert.match(electronApi, /interface EditorExtensionLocalVsixStatus/);
-  assert.match(electronApi, /localVsix:\s*EditorExtensionLocalVsixStatus/);
+  assert.match(sharedTypes, /interface EditorExtensionLocalVsixStatus/);
+  assert.match(sharedTypes, /localVsix:\s*EditorExtensionLocalVsixStatus/);
+  assert.match(electronApi, /export type\s*\{[\s\S]*EditorExtensionLocalVsixStatus[\s\S]*\}\s*from\s*['"]\.\/shared\/electronApiTypes['"]/);
   assert.match(electronApi, /installDownloadedEditorExtensionVsix:\s*\(editor:\s*EditorKind,\s*extensionId:\s*string\)\s*=>\s*Promise<EditorExtensionCommandResult>/);
 
   assert.match(editorExtensionsUi, /canInstallDownloadedVsix\(record,\s*['"]vscode['"]\)/);

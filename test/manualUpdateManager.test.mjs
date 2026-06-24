@@ -106,6 +106,7 @@ test('manual update is wired as a manual GitHub release check', () => {
   const appIpc = fs.readFileSync(path.join(root, 'src/main/ipc/appIpc.ts'), 'utf8');
   const preload = fs.readFileSync(path.join(root, 'src/preload.ts'), 'utf8');
   const electronApi = fs.readFileSync(path.join(root, 'src/electron-api.d.ts'), 'utf8');
+  const sharedTypes = fs.readFileSync(path.join(root, 'src/shared/electronApiTypes.ts'), 'utf8');
   const forgeConfig = fs.readFileSync(path.join(root, 'forge.config.ts'), 'utf8');
   const updateManager = fs.readFileSync(path.join(root, 'src/main/manualUpdateManager.ts'), 'utf8');
 
@@ -114,7 +115,9 @@ test('manual update is wired as a manual GitHub release check', () => {
   assert.match(appIpc, /ipcMain\.handle\(['"]updates:openDownload['"]/);
   assert.match(preload, /getUpdateInfo/);
   assert.match(preload, /openUpdateDownload/);
-  assert.match(electronApi, /interface AppUpdateInfo/);
+  assert.match(sharedTypes, /interface AppUpdateInfo/);
+  assert.match(electronApi, /export type\s*\{[\s\S]*AppUpdateInfo[\s\S]*\}\s*from\s*['"]\.\/shared\/electronApiTypes['"]/);
+  assert.match(electronApi, /getUpdateInfo:\s*\(\)\s*=>\s*Promise<AppUpdateInfo>/);
   assert.match(forgeConfig, /prerelease:\s*false/);
   assert.match(updateManager, /release => !release\.draft && !release\.prerelease/);
   assert.match(updateManager, /https:\/\/api\.github\.com\/repos\/layouwen\/avan-toolkit\/releases/);
