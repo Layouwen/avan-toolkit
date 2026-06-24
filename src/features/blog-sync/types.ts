@@ -1,4 +1,12 @@
-import type { ObsidianBlog } from '../../electron-api.d';
+import type { AppConfig, ObsidianBlog } from '../../electron-api.d';
+
+export type HexoEditorCommand = AppConfig['hexoEditorCommand'];
+
+export interface LogLine {
+  id: number;
+  text: string;
+  level: 'info' | 'success' | 'warn' | 'error';
+}
 
 export interface BlogTreeNode {
   key: string;

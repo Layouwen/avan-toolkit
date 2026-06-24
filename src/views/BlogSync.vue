@@ -1,30 +1,15 @@
 <script setup lang="ts">
 import type { AppConfig, BlogValidationIssue, BlogValidationResult, ObsidianBlog } from '../electron-api.d';
-import type { BadgeVariants } from '@/components/ui/badge';
-import type { BlogTreeNode } from '@/features/blog-sync/types';
+import type { BlogTreeNode, LogLine } from '@/features/blog-sync/types';
 import type { BlogSortBy, SortOrder } from '@/features/blog-sync/utils';
-import { CheckCircle2Icon, ExternalLinkIcon, FolderOpenIcon, Loader2Icon, PlusIcon, RefreshCwIcon, RotateCcwIcon, XIcon } from '@lucide/vue';
-import { computed, nextTick, onMounted, onUnmounted, ref, toRaw } from 'vue';
+import { computed, onMounted, onUnmounted, ref, toRaw } from 'vue';
 import { useI18n } from 'vue-i18n';
-import BlogTree from '@/components/BlogTree.vue';
-import ConfirmButton from '@/components/ConfirmButton.vue';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import BlogLibraryCard from '@/features/blog-sync/components/BlogLibraryCard.vue';
+import BlogSyncConfigCard from '@/features/blog-sync/components/BlogSyncConfigCard.vue';
+import BlogSyncLogCard from '@/features/blog-sync/components/BlogSyncLogCard.vue';
+import BlogSyncRunCard from '@/features/blog-sync/components/BlogSyncRunCard.vue';
+import BlogSyncValidationCard from '@/features/blog-sync/components/BlogSyncValidationCard.vue';
 import {
   buildBlogTree,
   collectBlogTreeFolderKeys,
@@ -36,12 +21,6 @@ import {
 } from '@/features/blog-sync/utils';
 
 const { t } = useI18n();
-
-interface LogLine {
-  id: number;
-  text: string;
-  level: 'info' | 'success' | 'warn' | 'error';
-}
 
 const config = ref<AppConfig>({
   obsidianBlogDir: '',
@@ -93,7 +72,6 @@ const validationResult = ref<BlogValidationResult>({
 });
 const openingValidationIssueId = ref('');
 const status = ref<'idle' | 'syncing' | 'success' | 'error'>('idle');
-const logContainer = ref<HTMLElement | null>(null);
 const newBlogTitle = ref('');
 const newBlogDirectory = ref('');
 const newBlogTags = ref<string[]>([]);
@@ -216,11 +194,6 @@ onMounted(async () => {
   window.addEventListener('click', closeBlogContextMenu);
   window.electronAPI.onSyncLog((message, level) => {
     logs.value.push({ id: logIdCounter++, text: message, level: level as LogLine['level'] });
-    nextTick(() => {
-      if (logContainer.value) {
-        logContainer.value.scrollTop = logContainer.value.scrollHeight;
-      }
-    });
   });
 });
 
@@ -526,11 +499,6 @@ async function startSync() {
     else {
       logs.value.push({ id: logIdCounter++, text: t('blogSync.logs.done'), level: 'success' });
     }
-    nextTick(() => {
-      if (logContainer.value) {
-        logContainer.value.scrollTop = logContainer.value.scrollHeight;
-      }
-    });
   });
 
   await window.electronAPI.startSync();
@@ -561,11 +529,6 @@ async function pullBlog() {
     else {
       logs.value.push({ id: logIdCounter++, text: t('blogSync.logs.pullDone'), level: 'success' });
     }
-    nextTick(() => {
-      if (logContainer.value) {
-        logContainer.value.scrollTop = logContainer.value.scrollHeight;
-      }
-    });
   });
 
   await window.electronAPI.pullBlog();
@@ -575,32 +538,6 @@ function clearLogs() {
   logs.value = [];
 }
 
-function issueBadgeVariant(issue: BlogValidationIssue): BadgeVariants['variant'] {
-  return issue.severity === 'error' ? 'destructive' : 'secondary';
-}
-
-function statusBadgeVariant(): BadgeVariants['variant'] {
-  if (status.value === 'success') {
-    return 'default';
-  }
-  if (status.value === 'error') {
-    return 'destructive';
-  }
-  if (status.value === 'syncing') {
-    return 'secondary';
-  }
-  return 'outline';
-}
-
-function logLineClass(level: LogLine['level']) {
-  return {
-    info: 'text-muted-foreground',
-    success: 'text-foreground',
-    warn: 'text-foreground',
-    error: 'text-destructive',
-  }[level];
-}
-
 function updateHexoEditorCommand(value: unknown) {
   if (value === 'cursor' || value === 'code') {
     config.value.hexoEditorCommand = value;
@@ -608,22 +545,16 @@ function updateHexoEditorCommand(value: unknown) {
   }
 }
 
-function updateBlogSortBy(value: unknown) {
-  if (value === 'fileName' || value === 'title' || value === 'updatedAt') {
-    blogSortBy.value = value;
-  }
+function updateBlogSortBy(value: BlogSortBy) {
+  blogSortBy.value = value;
 }
 
-function updateBlogSortOrder(value: unknown) {
-  if (value === 'asc' || value === 'desc') {
-    blogSortOrder.value = value;
-  }
+function updateBlogSortOrder(value: SortOrder) {
+  blogSortOrder.value = value;
 }
 
-function updateSelectedTagFilters(value: unknown) {
-  selectedTagFilters.value = Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
-    : [];
+function updateSelectedTagFilters(value: string[]) {
+  selectedTagFilters.value = value;
 }
 
 function handleCreateModalOpen(open: boolean) {
@@ -631,10 +562,6 @@ function handleCreateModalOpen(open: boolean) {
   if (!open) {
     resetCreateBlogForm();
   }
-}
-
-function canDeleteHexoOrphanIssue(issue: BlogValidationIssue) {
-  return issue.source === 'hexo' && issue.field === 'sync:missingObsidian';
 }
 
 async function openValidationIssue(issue: BlogValidationIssue) {
@@ -703,583 +630,109 @@ function openHexoProjectInEditor() {
 
       <TabsContent value="sync">
         <div class="flex flex-col gap-5">
-          <Card>
-            <CardHeader>
-              <CardTitle class="text-base">
-                {{ t('blogSync.config.title') }}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel for="obsidian-blog-dir">
-                    {{ t('blogSync.config.obsidianBlogDir') }}
-                  </FieldLabel>
-                  <div class="flex w-full items-center gap-2">
-                    <Input
-                      id="obsidian-blog-dir"
-                      v-model="config.obsidianBlogDir"
-                      class="min-w-0 flex-1"
-                      :placeholder="t('blogSync.config.obsidianPlaceholder')"
-                      @blur="saveConfig"
-                    />
-                    <Button variant="secondary" @click="browseDir('obsidianBlogDir')">
-                      <FolderOpenIcon data-icon="inline-start" />
-                      {{ t('blogSync.config.browse') }}
-                    </Button>
-                  </div>
-                </Field>
+          <BlogSyncConfigCard
+            :obsidian-blog-dir="config.obsidianBlogDir"
+            :hexo-blog-dir="config.hexoBlogDir"
+            :hexo-editor-command="config.hexoEditorCommand"
+            :hexo-editor-command-options="hexoEditorCommandOptions"
+            @update:obsidian-blog-dir="config.obsidianBlogDir = $event"
+            @update:hexo-blog-dir="config.hexoBlogDir = $event"
+            @update:hexo-editor-command="updateHexoEditorCommand"
+            @browse="browseDir"
+            @save="saveConfig"
+          />
 
-                <Field>
-                  <FieldLabel for="hexo-blog-dir">
-                    {{ t('blogSync.config.hexoBlogDir') }}
-                  </FieldLabel>
-                  <div class="flex w-full items-center gap-2">
-                    <Input
-                      id="hexo-blog-dir"
-                      v-model="config.hexoBlogDir"
-                      class="min-w-0 flex-1"
-                      :placeholder="t('blogSync.config.hexoPlaceholder')"
-                      @blur="saveConfig"
-                    />
-                    <Button variant="secondary" @click="browseDir('hexoBlogDir')">
-                      <FolderOpenIcon data-icon="inline-start" />
-                      {{ t('blogSync.config.browse') }}
-                    </Button>
-                  </div>
-                </Field>
+          <BlogSyncRunCard
+            :syncing="syncing"
+            :pulling-blog="pullingBlog"
+            :can-sync="!syncing && !pullingBlog && Boolean(config.obsidianBlogDir && config.hexoBlogDir)"
+            :can-pull="!syncing && !pullingBlog && Boolean(config.hexoBlogDir)"
+            :status="status"
+            @start-sync="startSync"
+            @pull-blog="pullBlog"
+          />
 
-                <Field>
-                  <FieldLabel>{{ t('blogSync.config.hexoEditorCommand') }}</FieldLabel>
-                  <Select :model-value="config.hexoEditorCommand" @update:model-value="updateHexoEditorCommand">
-                    <SelectTrigger class="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem v-for="option in hexoEditorCommandOptions" :key="option.value" :value="option.value">
-                          {{ option.label }}
-                        </SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </FieldGroup>
-            </CardContent>
-          </Card>
+          <BlogSyncLogCard :logs="logs" @clear="clearLogs" />
 
-          <Card>
-            <CardContent>
-              <div class="flex flex-wrap items-center gap-2">
-                <Button
-                  :disabled="syncing || pullingBlog || !config.obsidianBlogDir || !config.hexoBlogDir"
-                  @click="startSync"
-                >
-                  <Loader2Icon v-if="syncing" data-icon="inline-start" class="animate-spin" />
-                  <CheckCircle2Icon v-else data-icon="inline-start" />
-                  {{ syncing ? t('blogSync.action.syncing') : t('blogSync.action.sync') }}
-                </Button>
-                <Button
-                  variant="secondary"
-                  :disabled="syncing || pullingBlog || !config.hexoBlogDir"
-                  @click="pullBlog"
-                >
-                  <Loader2Icon v-if="pullingBlog" data-icon="inline-start" class="animate-spin" />
-                  <RotateCcwIcon v-else data-icon="inline-start" />
-                  {{ pullingBlog ? t('blogSync.action.pulling') : t('blogSync.action.pull') }}
-                </Button>
-                <Badge :variant="statusBadgeVariant()">
-                  {{ t(`blogSync.status.${status}`) }}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card class="min-h-0 flex-1">
-            <CardHeader class="flex flex-row items-center justify-between">
-              <CardTitle class="text-base">
-                {{ t('blogSync.logs.title') }}
-              </CardTitle>
-              <Button variant="ghost" size="sm" @click="clearLogs">
-                {{ t('blogSync.logs.clear') }}
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div
-                ref="logContainer"
-                class="h-[360px] overflow-y-auto rounded-md border bg-background p-3 font-mono text-[12.5px] leading-relaxed"
-              >
-                <div
-                  v-for="line in logs"
-                  :key="line.id"
-                  class="whitespace-pre-wrap break-all"
-                  :class="logLineClass(line.level)"
-                >
-                  {{ line.text }}
-                </div>
-
-                <div v-if="logs.length === 0" class="mt-5 text-center text-muted-foreground italic">
-                  {{ t('blogSync.logs.empty') }}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <CardTitle class="text-base">
-                  {{ t('blogSync.validation.title') }}
-                </CardTitle>
-                <div class="flex flex-wrap justify-end gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    :disabled="!config.obsidianBlogDir"
-                    @click="openConfiguredBlogDir('obsidian')"
-                  >
-                    <FolderOpenIcon data-icon="inline-start" />
-                    {{ t('blogSync.validation.openObsidianDir') }}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    :disabled="!config.hexoBlogDir"
-                    @click="openConfiguredBlogDir('hexo')"
-                  >
-                    <FolderOpenIcon data-icon="inline-start" />
-                    {{ t('blogSync.validation.openHexoDir') }}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    :disabled="!config.obsidianBlogDir"
-                    @click="openObsidianPage"
-                  >
-                    <ExternalLinkIcon data-icon="inline-start" />
-                    {{ t('blogSync.validation.openObsidianPage') }}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    :disabled="!config.hexoBlogDir"
-                    @click="openHexoProjectInEditor"
-                  >
-                    <ExternalLinkIcon data-icon="inline-start" />
-                    {{ t('blogSync.validation.openProjectDir') }}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    :disabled="!config.obsidianBlogDir"
-                    @click="loadValidation"
-                  >
-                    <Loader2Icon v-if="validatingBlogs" data-icon="inline-start" class="animate-spin" />
-                    <RefreshCwIcon v-else data-icon="inline-start" />
-                    {{ t('blogSync.validation.refresh') }}
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent class="flex flex-col gap-3">
-              <Alert v-if="validationError" variant="destructive">
-                <AlertDescription class="flex items-start justify-between gap-3">
-                  <span>{{ validationError }}</span>
-                  <Button variant="ghost" size="icon-sm" @click="validationError = ''">
-                    <XIcon />
-                  </Button>
-                </AlertDescription>
-              </Alert>
-
-              <Alert
-                v-if="validationResult.ok"
-              >
-                <AlertDescription>
-                  {{ t('blogSync.validation.ok', {
-                    count: validationResult.checkedFiles,
-                    obsidian: validationResult.obsidianCheckedFiles,
-                    hexo: validationResult.hexoCheckedFiles,
-                  }) }}
-                </AlertDescription>
-              </Alert>
-
-              <template v-else>
-                <Alert :variant="validationResult.errorCount > 0 ? 'destructive' : 'default'">
-                  <AlertDescription>
-                    {{ t('blogSync.validation.failed', {
-                      count: validationResult.issues.length,
-                      errors: validationResult.errorCount,
-                      warnings: validationResult.warningCount,
-                    }) }}
-                  </AlertDescription>
-                </Alert>
-                <div class="validation-list">
-                  <div
-                    v-for="issue in validationResult.issues"
-                    :key="issue.id"
-                    class="validation-row"
-                  >
-                    <div class="min-w-0">
-                      <div class="flex flex-wrap items-center gap-2">
-                        <Badge :variant="issue.source === 'hexo' ? 'secondary' : 'outline'">
-                          {{ issue.source }}
-                        </Badge>
-                        <Badge :variant="issueBadgeVariant(issue)">
-                          {{ issue.field }}
-                        </Badge>
-                        <span class="break-all text-foreground">{{ issue.relativePath }}</span>
-                      </div>
-                      <div class="mt-1 text-sm text-muted-foreground">
-                        {{ issue.message }}
-                      </div>
-                    </div>
-                    <div class="flex shrink-0 items-center gap-2">
-                      <ConfirmButton
-                        v-if="canDeleteHexoOrphanIssue(issue)"
-                        :title="t('blogSync.validation.deleteHexoOrphan')"
-                        :description="t('blogSync.validation.deleteHexoOrphanPrompt', { path: issue.relativePath })"
-                        :confirm-text="t('blogSync.validation.confirmDeleteHexoOrphan')"
-                        :cancel-text="t('blogSync.validation.cancelDeleteHexoOrphan')"
-                        variant="destructive"
-                        size="sm"
-                        :disabled="Boolean(deletingHexoIssueId)"
-                        @confirm="deleteHexoOrphanBlog(issue)"
-                      >
-                        <Loader2Icon v-if="deletingHexoIssueId === issue.id" data-icon="inline-start" class="animate-spin" />
-                        {{ t('blogSync.validation.deleteHexoOrphan') }}
-                      </ConfirmButton>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        :disabled="Boolean(openingValidationIssueId)"
-                        @click="openValidationIssue(issue)"
-                      >
-                        <Loader2Icon v-if="openingValidationIssueId === issue.id" data-icon="inline-start" class="animate-spin" />
-                        {{ t('blogSync.validation.open') }}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </CardContent>
-          </Card>
+          <BlogSyncValidationCard
+            :obsidian-configured="Boolean(config.obsidianBlogDir)"
+            :hexo-configured="Boolean(config.hexoBlogDir)"
+            :validation-error="validationError"
+            :validation-result="validationResult"
+            :validating-blogs="validatingBlogs"
+            :opening-validation-issue-id="openingValidationIssueId"
+            :deleting-hexo-issue-id="deletingHexoIssueId"
+            @clear-error="validationError = ''"
+            @refresh="loadValidation"
+            @open-configured-dir="openConfiguredBlogDir"
+            @open-obsidian-page="openObsidianPage"
+            @open-hexo-project="openHexoProjectInEditor"
+            @open-issue="openValidationIssue"
+            @delete-hexo-orphan="deleteHexoOrphanBlog"
+          />
         </div>
       </TabsContent>
 
       <TabsContent value="blogs">
-        <Card>
-          <CardHeader>
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle class="text-base">
-                {{ t('blogSync.blogs.title') }}
-              </CardTitle>
-              <div class="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  :disabled="!config.obsidianBlogDir || creatingBlog"
-                  @click="openCreateBlogModal()"
-                >
-                  <PlusIcon data-icon="inline-start" />
-                  {{ t('blogSync.blogs.add') }}
-                </Button>
-                <Button size="sm" variant="secondary" :disabled="loadingBlogs" @click="loadBlogs">
-                  <Loader2Icon v-if="loadingBlogs" data-icon="inline-start" class="animate-spin" />
-                  <RefreshCwIcon v-else data-icon="inline-start" />
-                  {{ t('blogSync.blogs.refresh') }}
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent class="flex flex-col gap-4">
-            <Alert v-if="blogError" variant="destructive">
-              <AlertDescription class="flex items-start justify-between gap-3">
-                <span>{{ blogError }}</span>
-                <Button variant="ghost" size="icon-sm" @click="blogError = ''">
-                  <XIcon />
-                </Button>
-              </AlertDescription>
-            </Alert>
-
-            <template v-if="blogs.length > 0">
-              <div class="flex flex-col gap-3">
-                <div v-if="tagFilterOptions.length > 0" class="flex flex-col gap-2">
-                  <div class="text-xs text-muted-foreground">
-                    {{ t('blogSync.blogs.tagSearchPlaceholder') }}
-                  </div>
-                  <ToggleGroup
-                    type="multiple"
-                    :model-value="selectedTagFilters"
-                    class="flex flex-wrap justify-start gap-2"
-                    @update:model-value="updateSelectedTagFilters"
-                  >
-                    <ToggleGroupItem v-for="option in tagFilterOptions" :key="option.value" :value="option.value">
-                      {{ option.label }}
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2">
-                  <Select :model-value="blogSortBy" @update:model-value="updateBlogSortBy">
-                    <SelectTrigger class="w-[160px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem v-for="option in sortByOptions" :key="option.value" :value="option.value">
-                          {{ option.label }}
-                        </SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <Select :model-value="blogSortOrder" @update:model-value="updateBlogSortOrder">
-                    <SelectTrigger class="w-[150px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem v-for="option in sortOrderOptions" :key="option.value" :value="option.value">
-                          {{ option.label }}
-                        </SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" variant="secondary" @click="expandAllBlogFolders">
-                    {{ t('blogSync.blogs.expandAll') }}
-                  </Button>
-                  <Button size="sm" variant="secondary" @click="collapseAllBlogFolders">
-                    {{ t('blogSync.blogs.collapseAll') }}
-                  </Button>
-                </div>
-              </div>
-
-              <div
-                v-if="contextMenuShow"
-                class="fixed z-50 min-w-44 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-                :style="contextMenuStyle"
-                @click.stop
-              >
-                <Button
-                  v-for="option in blogContextMenuOptions"
-                  :key="option.key"
-                  variant="ghost"
-                  class="w-full justify-start"
-                  @click="handleBlogContextMenuSelect(option.key)"
-                >
-                  {{ option.label }}
-                </Button>
-              </div>
-
-              <BlogTree
-                v-if="sortedBlogs.length > 0"
-                :nodes="blogTreeData"
-                :expanded-keys="expandedBlogKeys"
-                :deleting-blog-id="deletingBlogId"
-                :remove-label="t('blogSync.blogs.remove')"
-                :remove-title="t('blogSync.blogs.remove')"
-                :remove-confirm-text="t('blogSync.blogs.confirmRemove')"
-                :remove-cancel-text="t('blogSync.blogs.cancelRemove')"
-                :remove-prompt="(blog: ObsidianBlog) => t('blogSync.blogs.removePrompt', { title: blog.title })"
-                :format-updated-at="formatUpdatedAt"
-                @update:expanded-keys="expandedBlogKeys = $event"
-                @contextmenu="openBlogContextMenu"
-                @remove="removeBlog"
-              />
-              <Empty v-else>
-                <EmptyHeader>
-                  <EmptyTitle>{{ t('blogSync.blogs.noTagMatches') }}</EmptyTitle>
-                  <EmptyDescription>{{ t('blogSync.blogs.noTagMatches') }}</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-
-              <Dialog v-model:open="renameModalShow">
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{{ renameMode === 'title' ? t('blogSync.blogs.renameTitle') : t('blogSync.blogs.renameFileName') }}</DialogTitle>
-                  </DialogHeader>
-                  <Input
-                    v-model="renameValue"
-                    :placeholder="renameMode === 'title'
-                      ? t('blogSync.blogs.renameTitlePlaceholder')
-                      : t('blogSync.blogs.renameFileNamePlaceholder')"
-                    @keyup.enter="confirmRename"
-                  />
-                  <DialogFooter>
-                    <Button variant="secondary" @click="renameModalShow = false">
-                      {{ t('blogSync.blogs.renameCancel') }}
-                    </Button>
-                    <Button :disabled="!renameValue.trim() || renaming" @click="confirmRename">
-                      <Loader2Icon v-if="renaming" data-icon="inline-start" class="animate-spin" />
-                      {{ t('blogSync.blogs.renameConfirm') }}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </template>
-
-            <Empty v-else>
-              <EmptyHeader>
-                <EmptyTitle>{{ loadingBlogs ? t('blogSync.blogs.loading') : t('blogSync.blogs.empty') }}</EmptyTitle>
-              </EmptyHeader>
-            </Empty>
-
-            <Dialog :open="createModalShow" @update:open="handleCreateModalOpen">
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{{ t('blogSync.blogs.createTitle') }}</DialogTitle>
-                </DialogHeader>
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel for="new-blog-title">
-                      {{ t('blogSync.blogs.titleLabel') }}
-                    </FieldLabel>
-                    <Input
-                      id="new-blog-title"
-                      v-model="newBlogTitle"
-                      :placeholder="t('blogSync.blogs.newTitlePlaceholder')"
-                      :disabled="!config.obsidianBlogDir || creatingBlog"
-                      @keyup.enter="addBlog"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel for="new-blog-directory">
-                      {{ t('blogSync.blogs.directoryLabel') }}
-                    </FieldLabel>
-                    <Input
-                      id="new-blog-directory"
-                      v-model="newBlogDirectory"
-                      list="blog-directory-options"
-                      :placeholder="t('blogSync.blogs.directoryPlaceholder')"
-                      :disabled="!config.obsidianBlogDir || creatingBlog"
-                      @keyup.enter="addBlog"
-                    />
-                    <datalist id="blog-directory-options">
-                      <option v-for="option in directoryOptions" :key="option.value" :value="option.value">
-                        {{ option.label }}
-                      </option>
-                    </datalist>
-                  </Field>
-                  <Field>
-                    <FieldLabel>{{ t('blogSync.blogs.tagsLabel') }}</FieldLabel>
-                    <div
-                      class="tag-input-shell w-full"
-                      :class="{ 'tag-input-shell--disabled': !config.obsidianBlogDir || creatingBlog }"
-                    >
-                      <Badge
-                        v-for="(tag, index) in newBlogTags"
-                        :key="tag"
-                        variant="secondary"
-                        class="gap-1"
-                      >
-                        {{ tag }}
-                        <button
-                          type="button"
-                          :disabled="!config.obsidianBlogDir || creatingBlog"
-                          class="rounded-full text-muted-foreground hover:text-foreground disabled:pointer-events-none"
-                          @click="removeTag(index)"
-                        >
-                          <XIcon class="size-3" />
-                        </button>
-                      </Badge>
-                      <Input
-                        :value="tagInputValue"
-                        class="tag-input-field"
-                        :placeholder="t('blogSync.blogs.tagsPlaceholder')"
-                        :disabled="!config.obsidianBlogDir || creatingBlog"
-                        @update:model-value="value => handleTagInputUpdate(String(value))"
-                        @keydown="handleTagInputKeydown"
-                        @blur="addTag()"
-                      />
-                    </div>
-                  </Field>
-                  <Field>
-                    <FieldLabel for="new-blog-categories">
-                      {{ t('blogSync.blogs.categoriesLabel') }}
-                    </FieldLabel>
-                    <Input
-                      id="new-blog-categories"
-                      v-model="newBlogCategories"
-                      list="blog-category-options"
-                      :placeholder="t('blogSync.blogs.categoriesPlaceholder')"
-                      :disabled="!config.obsidianBlogDir || creatingBlog"
-                      @keyup.enter="addBlog"
-                    />
-                    <datalist id="blog-category-options">
-                      <option v-for="option in categoryOptions" :key="option.value" :value="option.value">
-                        {{ option.label }}
-                      </option>
-                    </datalist>
-                  </Field>
-                </FieldGroup>
-                <DialogFooter>
-                  <Button variant="secondary" @click="createModalShow = false">
-                    {{ t('blogSync.blogs.createCancel') }}
-                  </Button>
-                  <Button
-                    :disabled="!config.obsidianBlogDir || !newBlogTitle.trim() || creatingBlog"
-                    @click="addBlog"
-                  >
-                    <Loader2Icon v-if="creatingBlog" data-icon="inline-start" class="animate-spin" />
-                    {{ t('blogSync.blogs.createConfirm') }}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </CardContent>
-        </Card>
+        <BlogLibraryCard
+          :obsidian-configured="Boolean(config.obsidianBlogDir)"
+          :blogs="blogs"
+          :loading-blogs="loadingBlogs"
+          :creating-blog="creatingBlog"
+          :deleting-blog-id="deletingBlogId"
+          :blog-error="blogError"
+          :tag-filter-options="tagFilterOptions"
+          :selected-tag-filters="selectedTagFilters"
+          :sort-by-options="sortByOptions"
+          :blog-sort-by="blogSortBy"
+          :sort-order-options="sortOrderOptions"
+          :blog-sort-order="blogSortOrder"
+          :context-menu-show="contextMenuShow"
+          :context-menu-style="contextMenuStyle"
+          :blog-context-menu-options="blogContextMenuOptions"
+          :sorted-blogs="sortedBlogs"
+          :blog-tree-data="blogTreeData"
+          :expanded-blog-keys="expandedBlogKeys"
+          :rename-modal-show="renameModalShow"
+          :rename-mode="renameMode"
+          :rename-value="renameValue"
+          :renaming="renaming"
+          :create-modal-show="createModalShow"
+          :new-blog-title="newBlogTitle"
+          :new-blog-directory="newBlogDirectory"
+          :directory-options="directoryOptions"
+          :new-blog-tags="newBlogTags"
+          :tag-input-value="tagInputValue"
+          :new-blog-categories="newBlogCategories"
+          :category-options="categoryOptions"
+          :format-updated-at="formatUpdatedAt"
+          :remove-prompt="(blog: ObsidianBlog) => t('blogSync.blogs.removePrompt', { title: blog.title })"
+          @clear-error="blogError = ''"
+          @open-create="openCreateBlogModal()"
+          @refresh="loadBlogs"
+          @update:selected-tag-filters="updateSelectedTagFilters"
+          @update:blog-sort-by="updateBlogSortBy"
+          @update:blog-sort-order="updateBlogSortOrder"
+          @expand-all="expandAllBlogFolders"
+          @collapse-all="collapseAllBlogFolders"
+          @select-context-menu="handleBlogContextMenuSelect"
+          @update:expanded-blog-keys="expandedBlogKeys = $event"
+          @blog-context-menu="openBlogContextMenu"
+          @remove="removeBlog"
+          @update:rename-modal-show="renameModalShow = $event"
+          @update:rename-value="renameValue = $event"
+          @confirm-rename="confirmRename"
+          @update:create-modal-show="handleCreateModalOpen"
+          @update:new-blog-title="newBlogTitle = $event"
+          @update:new-blog-directory="newBlogDirectory = $event"
+          @update-tag-input="handleTagInputUpdate"
+          @tag-keydown="handleTagInputKeydown"
+          @add-tag="addTag()"
+          @remove-tag="removeTag"
+          @update:new-blog-categories="newBlogCategories = $event"
+          @add-blog="addBlog"
+        />
       </TabsContent>
     </Tabs>
   </main>
 </template>
-
-<style scoped>
-.tag-input-shell {
-  display: flex;
-  min-height: 34px;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 2px 6px;
-  background: transparent;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.tag-input-shell:focus-within {
-  border-color: var(--ring);
-  box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 35%, transparent);
-}
-
-.tag-input-shell--disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.tag-input-field {
-  min-width: 72px;
-  flex: 1;
-}
-
-.validation-list {
-  display: flex;
-  max-height: 320px;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
-}
-
-.validation-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.03);
-}
-</style>
