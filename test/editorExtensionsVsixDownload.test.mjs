@@ -12,7 +12,7 @@ function readProjectFile(relativePath) {
 
 test('editor extensions can download VSIX for both editors without auto-installing', () => {
   const configManager = readProjectFile('src/main/configManager.ts');
-  const main = readProjectFile('src/main.ts');
+  const editorExtensionsIpc = readProjectFile('src/main/ipc/editorExtensionsIpc.ts');
   const preload = readProjectFile('src/preload.ts');
   const electronApi = readProjectFile('src/electron-api.d.ts');
   const editorExtensionManager = readProjectFile('src/main/editorExtensionManager.ts');
@@ -48,7 +48,7 @@ test('editor extensions can download VSIX for both editors without auto-installi
   assert.doesNotMatch(editorExtensionManager, /dialog\.showSaveDialog/);
   assert.doesNotMatch(managerDownloadFunction, /--install-extension/);
 
-  assert.match(main, /ipcMain\.handle\(['"]editorExtensions:downloadVsix['"]/);
+  assert.match(editorExtensionsIpc, /ipcMain\.handle\(['"]editorExtensions:downloadVsix['"]/);
   assert.match(preload, /downloadEditorExtensionVsix:\s*\(extensionId:\s*string\)/);
   assert.match(preload, /ipcRenderer\.invoke\(['"]editorExtensions:downloadVsix['"],\s*extensionId\)/);
   assert.match(electronApi, /interface EditorExtensionVsixDownloadResult/);
@@ -84,7 +84,7 @@ test('editor extensions can download VSIX for both editors without auto-installi
 });
 
 test('editor extensions can install an existing downloaded VSIX when an editor is missing it', () => {
-  const main = readProjectFile('src/main.ts');
+  const editorExtensionsIpc = readProjectFile('src/main/ipc/editorExtensionsIpc.ts');
   const preload = readProjectFile('src/preload.ts');
   const electronApi = readProjectFile('src/electron-api.d.ts');
   const editorExtensionManager = readProjectFile('src/main/editorExtensionManager.ts');
@@ -108,8 +108,8 @@ test('editor extensions can install an existing downloaded VSIX when an editor i
   assert.match(managerInstallFunction, /vsix\.filePath/);
   assert.doesNotMatch(managerInstallFunction, /buildMarketplaceVsixUrl/);
 
-  assert.match(main, /installDownloadedEditorExtensionVsix/);
-  assert.match(main, /ipcMain\.handle\(['"]editorExtensions:installDownloadedVsix['"]/);
+  assert.match(editorExtensionsIpc, /installDownloadedEditorExtensionVsix/);
+  assert.match(editorExtensionsIpc, /ipcMain\.handle\(['"]editorExtensions:installDownloadedVsix['"]/);
   assert.match(preload, /installDownloadedEditorExtensionVsix:\s*\(editor:\s*EditorKind,\s*extensionId:\s*string\)/);
   assert.match(preload, /ipcRenderer\.invoke\(['"]editorExtensions:installDownloadedVsix['"],\s*editor,\s*extensionId\)/);
   assert.match(electronApi, /interface EditorExtensionLocalVsixStatus/);

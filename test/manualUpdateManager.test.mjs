@@ -103,14 +103,15 @@ test('manual update rejects non-release update URLs', async () => {
 
 test('manual update is wired as a manual GitHub release check', () => {
   const main = fs.readFileSync(path.join(root, 'src/main.ts'), 'utf8');
+  const appIpc = fs.readFileSync(path.join(root, 'src/main/ipc/appIpc.ts'), 'utf8');
   const preload = fs.readFileSync(path.join(root, 'src/preload.ts'), 'utf8');
   const electronApi = fs.readFileSync(path.join(root, 'src/electron-api.d.ts'), 'utf8');
   const forgeConfig = fs.readFileSync(path.join(root, 'forge.config.ts'), 'utf8');
   const updateManager = fs.readFileSync(path.join(root, 'src/main/manualUpdateManager.ts'), 'utf8');
 
   assert.doesNotMatch(main, /updateElectronApp\(\)/);
-  assert.match(main, /ipcMain\.handle\(['"]updates:getInfo['"]/);
-  assert.match(main, /ipcMain\.handle\(['"]updates:openDownload['"]/);
+  assert.match(appIpc, /ipcMain\.handle\(['"]updates:getInfo['"]/);
+  assert.match(appIpc, /ipcMain\.handle\(['"]updates:openDownload['"]/);
   assert.match(preload, /getUpdateInfo/);
   assert.match(preload, /openUpdateDownload/);
   assert.match(electronApi, /interface AppUpdateInfo/);
