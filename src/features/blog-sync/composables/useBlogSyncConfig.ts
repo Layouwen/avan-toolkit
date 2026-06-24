@@ -1,6 +1,8 @@
 import type { AppConfig } from '../../../electron-api.d';
 import { computed, ref, toRaw } from 'vue';
 
+import { createDefaultLifeToolsData, normalizeLifeToolsData } from '../../life-tools/data';
+
 export type BlogPathField = 'obsidianBlogDir' | 'hexoBlogDir';
 
 export function createDefaultBlogSyncConfig(): AppConfig {
@@ -31,6 +33,7 @@ export function createDefaultBlogSyncConfig(): AppConfig {
     editorExtensions: {
       vsixDownloadDir: '',
     },
+    lifeTools: createDefaultLifeToolsData(),
   };
 }
 
@@ -58,6 +61,7 @@ export function useBlogSyncConfig() {
       editorExtensions: {
         ...toRaw(current.editorExtensions),
       },
+      lifeTools: normalizeLifeToolsData(toRaw(current.lifeTools)),
     };
   }
 

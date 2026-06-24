@@ -13,6 +13,7 @@ function readProjectFile(relativePath) {
 const sharedTypeNames = [
   'ScreensaverConfig',
   'EditorExtensionsConfig',
+  'LifeToolsData',
   'ScreensaverStatus',
   'AppConfig',
   'AgentConfig',
@@ -70,6 +71,7 @@ test('Electron bridge DTOs live in shared module and remain publicly re-exported
   assert.doesNotMatch(preload, /PreloadConfig\[['"](?:agent|screensaver)['"]\]/);
 
   assert.match(electronApi, /export\s+type\s+\{[\s\S]*AppConfig[\s\S]*\}\s+from\s+['"]\.\/shared\/electronApiTypes['"]/);
+  assert.match(electronApi, /export\s+type\s+\{[\s\S]*LifeToolsData[\s\S]*\}\s+from\s+['"]\.\/shared\/electronApiTypes['"]/);
   assert.match(electronApi, /import\s+type\s+\{[\s\S]*AppConfig[\s\S]*\}\s+from\s+['"]\.\/shared\/electronApiTypes['"]/);
   assert.match(electronApi, /export\s+interface\s+ElectronAPI\b/);
   assert.match(electronApi, /interface\s+Window\s*\{\s*electronAPI:\s*ElectronAPI;\s*\}/);

@@ -50,6 +50,7 @@ export type {
   EditorExtensionVsixDownloadResult,
   EditorExtensionWithStatus,
   EditorKind,
+  LifeToolsData,
   LogFilters,
   LogLevel,
   LogModule,

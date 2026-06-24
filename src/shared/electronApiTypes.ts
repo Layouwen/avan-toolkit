@@ -1,3 +1,7 @@
+import type { LifeToolsData as LifeToolsDataModel } from '../features/life-tools/types';
+
+export type LifeToolsData = LifeToolsDataModel;
+
 export interface ScreensaverConfig {
   enabled: boolean;
   triggerIntervalMinutes: number;
@@ -27,6 +31,7 @@ export interface AppConfig {
   qzone: QzoneConfig;
   screensaver: ScreensaverConfig;
   editorExtensions: EditorExtensionsConfig;
+  lifeTools: LifeToolsData;
 }
 
 export interface AgentConfig {

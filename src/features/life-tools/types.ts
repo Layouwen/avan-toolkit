@@ -10,6 +10,8 @@ export interface CountdownEvent {
   date: ISODateString;
   recurrence: CountdownRecurrence;
   pinned?: boolean;
+  category?: string;
+  reminderDaysBefore?: number | null;
   notes?: string;
   createdAt?: ISODateTimeString;
   updatedAt?: ISODateTimeString;
@@ -46,4 +48,11 @@ export interface FocusSession {
   endsAt: ISODateTimeString;
   pausedAt?: ISODateTimeString;
   completedAt?: ISODateTimeString;
+}
+
+export interface LifeToolsData {
+  countdownEvents: CountdownEvent[];
+  focusPresets: FocusPreset[];
+  activeFocusSession: FocusSession | null;
+  focusHistory: FocusSession[];
 }

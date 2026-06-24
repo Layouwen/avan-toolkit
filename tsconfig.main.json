@@ -9,6 +9,8 @@
   "include": [
     "src/main.ts",
     "src/main/**/*",
+    "src/features/life-tools/data.ts",
+    "src/features/life-tools/types.ts",
     "src/preload.ts",
     "src/shared/electronApiTypes.ts",
     "forge.env.d.ts",

@@ -1,6 +1,9 @@
+import type { LifeToolsData } from '../features/life-tools/types';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { app } from 'electron';
+
+import { createDefaultLifeToolsData, normalizeLifeToolsData } from '../features/life-tools/data';
 
 export interface AppConfig {
   obsidianBlogDir: string;
@@ -29,6 +32,7 @@ export interface AppConfig {
   editorExtensions: {
     vsixDownloadDir: string;
   };
+  lifeTools: LifeToolsData;
 }
 
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json');
@@ -62,6 +66,7 @@ const DEFAULT_CONFIG: AppConfig = {
   editorExtensions: {
     vsixDownloadDir: '',
   },
+  lifeTools: createDefaultLifeToolsData(),
 };
 
 export async function getConfig(): Promise<AppConfig> {
@@ -87,10 +92,14 @@ export async function getConfig(): Promise<AppConfig> {
         ...DEFAULT_CONFIG.editorExtensions,
         ...parsed.editorExtensions,
       },
+      lifeTools: normalizeLifeToolsData(parsed.lifeTools),
     };
   }
   catch {
-    return { ...DEFAULT_CONFIG };
+    return {
+      ...DEFAULT_CONFIG,
+      lifeTools: createDefaultLifeToolsData(),
+    };
   }
 }
 

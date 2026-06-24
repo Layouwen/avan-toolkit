@@ -12,6 +12,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { createDefaultLifeToolsData, normalizeLifeToolsData } from '../features/life-tools/data';
 
 const { t } = useI18n();
 
@@ -42,6 +43,7 @@ const config = ref<AppConfig>({
   editorExtensions: {
     vsixDownloadDir: '',
   },
+  lifeTools: createDefaultLifeToolsData(),
 });
 const content = ref('');
 const running = ref(false);
@@ -96,6 +98,7 @@ function plainConfig(): AppConfig {
     qzone: {
       ...toRaw(current.qzone),
     },
+    lifeTools: normalizeLifeToolsData(toRaw(current.lifeTools)),
   };
 }
 
