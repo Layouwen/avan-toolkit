@@ -28,6 +28,6 @@ test('Hexo orphan cleanup is explicit, validated, and moved to trash', () => {
   assert.match(blogSync, /canDeleteHexoOrphanIssue\(issue\)/);
   assert.match(blogSync, /issue\.source\s*===\s*['"]hexo['"]/);
   assert.match(blogSync, /issue\.field\s*===\s*['"]sync:missingObsidian['"]/);
-  assert.match(blogSync, /NPopconfirm/);
+  assert.match(blogSync, /ConfirmButton/);
   assert.match(blogSync, /deleteHexoOrphanBlog\(issue\)/);
 });

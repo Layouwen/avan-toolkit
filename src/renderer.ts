@@ -35,4 +35,6 @@ import router from './router';
 
 import './index.css';
 
+document.documentElement.classList.add('dark');
+
 createApp(App).use(router).use(createPinia()).use(i18n).mount('#app');

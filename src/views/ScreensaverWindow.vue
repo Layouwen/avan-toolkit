@@ -1,7 +1,17 @@
 <script setup lang="ts">
-import { NButton, NModal, NSpace } from 'naive-ui';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import FlipCountdown from '../components/FlipCountdown.vue';
 
 const { t, tm } = useI18n();
@@ -151,44 +161,35 @@ const backgroundStyle = computed(() => {
             {{ currentTime }}
           </div>
 
-          <NButton
+          <Button
             class="close-btn"
-            :type="countdownFinished ? 'primary' : 'default'"
-            size="large"
-            :ghost="!countdownFinished"
+            :variant="countdownFinished ? 'default' : 'outline'"
+            size="lg"
             @click.stop="tryClose"
           >
             {{ t('screensaverWindow.close') }}
-          </NButton>
+          </Button>
         </div>
       </div>
 
-      <NModal
-        v-model:show="showConfirmDialog"
-        preset="card"
-        :title="t('screensaverWindow.confirmTitle')"
-        :bordered="false"
-        :mask-closable="false"
-        :z-index="10000"
-        style="width: min(400px, 90vw)"
-        @click.stop
-      >
-        <template #default>
-          <div class="modal-message">
-            {{ confirmMessage }}
-          </div>
-        </template>
-        <template #footer>
-          <NSpace justify="end">
-            <NButton @click="cancelClose">
+      <AlertDialog v-model:open="showConfirmDialog">
+        <AlertDialogContent class="max-w-[min(400px,90vw)]" @click.stop>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{{ t('screensaverWindow.confirmTitle') }}</AlertDialogTitle>
+            <AlertDialogDescription class="modal-message">
+              {{ confirmMessage }}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel @click="cancelClose">
               {{ t('screensaverWindow.cancel') }}
-            </NButton>
-            <NButton type="primary" @click="confirmClose">
+            </AlertDialogCancel>
+            <AlertDialogAction @click="confirmClose">
               {{ t('screensaverWindow.confirm') }}
-            </NButton>
-          </NSpace>
-        </template>
-      </NModal>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   </div>
 </template>

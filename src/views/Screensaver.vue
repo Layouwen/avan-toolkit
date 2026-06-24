@@ -1,22 +1,15 @@
 <script setup lang="ts">
 import type { AppConfig, ScreensaverStatus } from '../electron-api';
-import {
-  NButton,
-  NCard,
-  NColorPicker,
-  NForm,
-  NFormItem,
-  NInput,
-  NInputNumber,
-  NPageHeader,
-  NSelect,
-  NSpace,
-  NSwitch,
-  NTabPane,
-  NTabs,
-} from 'naive-ui';
+import { ImageIcon, Loader2Icon, PlayIcon } from '@lucide/vue';
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Field, FieldContent, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FlipCountdown from '../components/FlipCountdown.vue';
 
 const { t } = useI18n();
@@ -71,6 +64,7 @@ async function handleSelectImage() {
   const path = await window.electronAPI.selectImageFile();
   if (path) {
     config.backgroundImagePath = path;
+    await saveConfig();
   }
 }
 
@@ -145,102 +139,142 @@ onUnmounted(() => {
 
 <template>
   <main class="screensaver-settings-page h-full p-6">
-    <NSpace vertical :size="24" class="h-full">
-      <NPageHeader>
-        <template #title>
+    <div class="flex h-full flex-col gap-6">
+      <div>
+        <h1 class="text-2xl font-semibold text-foreground">
           {{ t('screensaverPage.title') }}
-        </template>
-      </NPageHeader>
+        </h1>
+      </div>
 
-      <NCard class="screensaver-settings-card">
-        <NTabs type="line" animated class="screensaver-tabs">
-          <NTabPane name="settings" :tab="t('screensaverPage.settingsTab')">
-            <NForm :model="config" label-placement="left" label-width="180">
-              <NFormItem :label="t('screensaverPage.enabled')">
-                <NSwitch v-model:value="config.enabled" @update:value="saveConfig" />
-              </NFormItem>
+      <Card class="screensaver-settings-card min-h-0">
+        <CardContent>
+          <Tabs default-value="settings" class="screensaver-tabs">
+            <TabsList>
+              <TabsTrigger value="settings">
+                {{ t('screensaverPage.settingsTab') }}
+              </TabsTrigger>
+              <TabsTrigger value="next-trigger">
+                {{ t('screensaverPage.nextTriggerTab') }}
+              </TabsTrigger>
+            </TabsList>
 
-              <NFormItem :label="t('screensaverPage.triggerInterval')">
-                <NInputNumber
-                  v-model:value="config.triggerIntervalMinutes"
-                  :min="1"
-                  :max="480"
-                  style="width: 200px"
-                  @update:value="saveConfig"
-                />
-              </NFormItem>
+            <TabsContent value="settings">
+              <FieldGroup class="max-w-2xl">
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <FieldTitle>{{ t('screensaverPage.enabled') }}</FieldTitle>
+                  </FieldContent>
+                  <Switch v-model="config.enabled" @update:model-value="saveConfig" />
+                </Field>
 
-              <NFormItem :label="t('screensaverPage.countdownDuration')">
-                <NInputNumber
-                  v-model:value="config.countdownSeconds"
-                  :min="5"
-                  :max="300"
-                  style="width: 200px"
-                  @update:value="saveConfig"
-                />
-              </NFormItem>
-
-              <NFormItem :label="t('screensaverPage.backgroundType')">
-                <NSelect
-                  v-model:value="config.backgroundType"
-                  style="width: 200px"
-                  :options="[
-                    { label: t('screensaverPage.backgroundTypeColor'), value: 'color' },
-                    { label: t('screensaverPage.backgroundTypeImage'), value: 'image' },
-                  ]"
-                  @update:value="saveConfig"
-                />
-              </NFormItem>
-
-              <NFormItem v-if="config.backgroundType === 'color'" :label="t('screensaverPage.backgroundColor')">
-                <NColorPicker v-model:value="config.backgroundColor" @update:value="saveConfig" />
-              </NFormItem>
-
-              <NFormItem v-if="config.backgroundType === 'image'" :label="t('screensaverPage.backgroundImage')">
-                <div class="flex gap-3 items-center">
-                  <NInput
-                    v-model:value="config.backgroundImagePath"
-                    readonly
-                    style="flex: 1; max-width: 400px"
-                    placeholder="未选择图片"
+                <Field>
+                  <FieldLabel for="screensaver-trigger-interval">
+                    {{ t('screensaverPage.triggerInterval') }}
+                  </FieldLabel>
+                  <Input
+                    id="screensaver-trigger-interval"
+                    v-model.number="config.triggerIntervalMinutes"
+                    type="number"
+                    :min="1"
+                    :max="480"
+                    class="max-w-[200px]"
+                    @change="saveConfig"
                   />
-                  <NButton @click="handleSelectImage">
-                    {{ t('screensaverPage.browse') }}
-                  </NButton>
-                </div>
-              </NFormItem>
+                </Field>
 
-              <NFormItem>
-                <NButton type="primary" :loading="testing" @click="handleTest">
-                  {{ testing ? t('screensaverPage.testing') : t('screensaverPage.testNow') }}
-                </NButton>
-              </NFormItem>
-            </NForm>
-          </NTabPane>
+                <Field>
+                  <FieldLabel for="screensaver-countdown">
+                    {{ t('screensaverPage.countdownDuration') }}
+                  </FieldLabel>
+                  <Input
+                    id="screensaver-countdown"
+                    v-model.number="config.countdownSeconds"
+                    type="number"
+                    :min="5"
+                    :max="300"
+                    class="max-w-[200px]"
+                    @change="saveConfig"
+                  />
+                </Field>
 
-          <NTabPane name="next-trigger" :tab="t('screensaverPage.nextTriggerTab')">
-            <section class="next-trigger-pane">
-              <div class="space-y-2">
-                <div class="text-sm text-[#9ca3af]">
-                  {{ t('screensaverPage.nextTriggerLabel') }}
-                </div>
-                <div class="text-lg text-[#e5e7eb]">
-                  {{ screensaverStatus.enabled ? t('screensaverPage.nextTriggerAt', { time: nextTriggerTime }) : t('screensaverPage.disabledStatus') }}
-                </div>
-              </div>
+                <Field>
+                  <FieldLabel>{{ t('screensaverPage.backgroundType') }}</FieldLabel>
+                  <NativeSelect v-model="config.backgroundType" class="max-w-[200px]" @update:model-value="saveConfig">
+                    <NativeSelectOption value="color">
+                      {{ t('screensaverPage.backgroundTypeColor') }}
+                    </NativeSelectOption>
+                    <NativeSelectOption value="image">
+                      {{ t('screensaverPage.backgroundTypeImage') }}
+                    </NativeSelectOption>
+                  </NativeSelect>
+                </Field>
 
-              <div class="countdown-fill-stage">
-                <FlipCountdown
-                  :seconds="remainingToOpenSeconds"
-                  :finished="!screensaverStatus.enabled || remainingToOpenSeconds <= 0"
-                  fill
-                />
-              </div>
-            </section>
-          </NTabPane>
-        </NTabs>
-      </NCard>
-    </NSpace>
+                <Field v-if="config.backgroundType === 'color'">
+                  <FieldLabel for="screensaver-background-color">
+                    {{ t('screensaverPage.backgroundColor') }}
+                  </FieldLabel>
+                  <Input
+                    id="screensaver-background-color"
+                    v-model="config.backgroundColor"
+                    type="color"
+                    class="h-10 max-w-[200px] p-1"
+                    @change="saveConfig"
+                  />
+                </Field>
+
+                <Field v-if="config.backgroundType === 'image'">
+                  <FieldLabel for="screensaver-background-image">
+                    {{ t('screensaverPage.backgroundImage') }}
+                  </FieldLabel>
+                  <div class="flex gap-3 items-center">
+                    <Input
+                      id="screensaver-background-image"
+                      v-model="config.backgroundImagePath"
+                      readonly
+                      class="max-w-[400px] flex-1"
+                      placeholder="未选择图片"
+                    />
+                    <Button variant="secondary" @click="handleSelectImage">
+                      <ImageIcon data-icon="inline-start" />
+                      {{ t('screensaverPage.browse') }}
+                    </Button>
+                  </div>
+                </Field>
+
+                <Field>
+                  <Button :disabled="testing" @click="handleTest">
+                    <Loader2Icon v-if="testing" data-icon="inline-start" class="animate-spin" />
+                    <PlayIcon v-else data-icon="inline-start" />
+                    {{ testing ? t('screensaverPage.testing') : t('screensaverPage.testNow') }}
+                  </Button>
+                </Field>
+              </FieldGroup>
+            </TabsContent>
+
+            <TabsContent value="next-trigger">
+              <section class="next-trigger-pane">
+                <div class="space-y-2">
+                  <div class="text-sm text-muted-foreground">
+                    {{ t('screensaverPage.nextTriggerLabel') }}
+                  </div>
+                  <div class="text-lg text-foreground">
+                    {{ screensaverStatus.enabled ? t('screensaverPage.nextTriggerAt', { time: nextTriggerTime }) : t('screensaverPage.disabledStatus') }}
+                  </div>
+                </div>
+
+                <div class="countdown-fill-stage">
+                  <FlipCountdown
+                    :seconds="remainingToOpenSeconds"
+                    :finished="!screensaverStatus.enabled || remainingToOpenSeconds <= 0"
+                    fill
+                  />
+                </div>
+              </section>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
   </main>
 </template>
 
@@ -250,10 +284,6 @@ onUnmounted(() => {
 }
 
 .screensaver-settings-card {
-  min-height: 0;
-}
-
-.screensaver-settings-card :deep(.n-card__content) {
   min-height: 0;
 }
 

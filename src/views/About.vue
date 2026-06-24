@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import type { AppUpdateInfo } from '../electron-api';
-import {
-  NAlert,
-  NButton,
-  NCard,
-  NSpace,
-  NTag,
-  NText,
-  useMessage,
-} from 'naive-ui';
+import type { BadgeVariants } from '@/components/ui/badge';
+import { Loader2Icon } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { toast } from 'vue-sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import packageJson from '../../package.json';
 
 const { t, locale } = useI18n();
-const message = useMessage();
 const updateInfo = ref<AppUpdateInfo | null>(null);
 const checkingUpdate = ref(false);
 const updateError = ref('');
@@ -66,16 +63,16 @@ const updateStatus = computed(() => {
   return updateInfo.value.hasUpdate ? 'available' : 'latest';
 });
 
-const updateTagType = computed(() => {
+const updateBadgeVariant = computed<BadgeVariants['variant']>(() => {
   switch (updateStatus.value) {
     case 'available':
-      return 'success';
-    case 'error':
-      return 'error';
-    case 'checking':
-      return 'info';
-    default:
       return 'default';
+    case 'error':
+      return 'destructive';
+    case 'checking':
+      return 'secondary';
+    default:
+      return 'outline';
   }
 });
 
@@ -94,7 +91,7 @@ function openLink(url: string) {
 async function handleLinkClick(link: { url: string; display: string; label: string; action: string }) {
   if (link.action === 'copy') {
     await navigator.clipboard.writeText(link.display);
-    message.success(`${link.label ?? ''}${link.label ? ' ' : ''}已复制`);
+    toast.success(`${link.label ?? ''}${link.label ? ' ' : ''}已复制`);
     return;
   }
 
@@ -131,107 +128,109 @@ async function openUpdateTarget() {
     await window.electronAPI.openUpdateDownload(target);
   }
   catch (error) {
-    message.error(error instanceof Error ? error.message : String(error));
+    toast.error(error instanceof Error ? error.message : String(error));
   }
 }
 </script>
 
 <template>
   <main class="min-h-full p-6">
-    <NCard :title="t('about.title')" embedded>
-      <template #header-extra>
-        <NButton tertiary size="small" @click="toggleLocale">
-          {{ t('about.language') }}
-        </NButton>
-      </template>
+    <Card>
+      <CardHeader>
+        <CardTitle>{{ t('about.title') }}</CardTitle>
+        <CardAction>
+          <Button variant="ghost" size="sm" @click="toggleLocale">
+            {{ t('about.language') }}
+          </Button>
+        </CardAction>
+      </CardHeader>
 
-      <NSpace vertical :size="12" class="max-w-xl">
-        <NCard size="small" embedded>
-          <NSpace vertical :size="10">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <NText depth="2">
-                  {{ t('about.update.currentVersion') }}
-                </NText>
-                <div class="mt-1 flex flex-wrap items-center gap-2">
-                  <NText strong>
-                    v{{ currentVersion }}
-                  </NText>
-                  <NTag size="small" :type="updateTagType">
-                    {{ t(`about.update.status.${updateStatus}`) }}
-                  </NTag>
+      <CardContent>
+        <div class="flex max-w-xl flex-col gap-3">
+          <Card>
+            <CardContent class="flex flex-col gap-3">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <span class="text-sm text-muted-foreground">
+                    {{ t('about.update.currentVersion') }}
+                  </span>
+                  <div class="mt-1 flex flex-wrap items-center gap-2">
+                    <strong>
+                      v{{ currentVersion }}
+                    </strong>
+                    <Badge :variant="updateBadgeVariant">
+                      {{ t(`about.update.status.${updateStatus}`) }}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                  <Button size="sm" variant="secondary" :disabled="checkingUpdate" @click="checkUpdates">
+                    <Loader2Icon v-if="checkingUpdate" data-icon="inline-start" class="animate-spin" />
+                    {{ t('about.update.check') }}
+                  </Button>
+                  <Button
+                    v-if="updateInfo?.hasUpdate"
+                    size="sm"
+                    @click="openUpdateTarget"
+                  >
+                    {{ updateInfo.downloadUrl ? t('about.update.download') : t('about.update.openRelease') }}
+                  </Button>
                 </div>
               </div>
 
-              <NSpace :size="8">
-                <NButton size="small" secondary :loading="checkingUpdate" @click="checkUpdates">
-                  {{ t('about.update.check') }}
-                </NButton>
-                <NButton
-                  v-if="updateInfo?.hasUpdate"
-                  size="small"
-                  type="primary"
-                  @click="openUpdateTarget"
-                >
-                  {{ updateInfo.downloadUrl ? t('about.update.download') : t('about.update.openRelease') }}
-                </NButton>
-              </NSpace>
-            </div>
+              <Alert
+                v-if="updateStatus !== 'idle'"
+                :variant="updateStatus === 'error' ? 'destructive' : 'default'"
+              >
+                <AlertDescription>
+                  <div class="flex flex-col gap-2">
+                    <div v-if="updateError">
+                      {{ t('about.update.errorPrefix') }}{{ updateError }}
+                    </div>
+                    <div v-else-if="updateInfo?.hasUpdate">
+                      {{ t('about.update.available', { version: updateInfo.latestVersion }) }}
+                    </div>
+                    <div v-else-if="updateInfo">
+                      {{ t('about.update.latest') }}
+                    </div>
+                    <div v-else>
+                      {{ t('about.update.checking') }}
+                    </div>
 
-            <NAlert
-              v-if="updateStatus !== 'idle'"
-              :type="updateStatus === 'error' ? 'error' : (updateStatus === 'available' ? 'success' : 'info')"
-              :show-icon="false"
-            >
-              <div class="space-y-2">
-                <div v-if="updateError">
-                  {{ t('about.update.errorPrefix') }}{{ updateError }}
-                </div>
-                <div v-else-if="updateInfo?.hasUpdate">
-                  {{ t('about.update.available', { version: updateInfo.latestVersion }) }}
-                </div>
-                <div v-else-if="updateInfo">
-                  {{ t('about.update.latest') }}
-                </div>
-                <div v-else>
-                  {{ t('about.update.checking') }}
-                </div>
+                    <div v-if="updateInfo?.hasUpdate" class="space-y-1">
+                      <span class="block text-xs text-muted-foreground">
+                        {{ updateInfo.downloadAssetName ? t('about.update.asset', { name: updateInfo.downloadAssetName }) : t('about.update.noAsset') }}
+                      </span>
+                      <span v-if="releaseNotesPreview" class="block whitespace-pre-line text-xs text-muted-foreground">
+                        {{ releaseNotesPreview }}
+                      </span>
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
 
-                <div v-if="updateInfo?.hasUpdate" class="space-y-1">
-                  <NText depth="3" class="block text-xs">
-                    {{ updateInfo.downloadAssetName ? t('about.update.asset', { name: updateInfo.downloadAssetName }) : t('about.update.noAsset') }}
-                  </NText>
-                  <NText v-if="releaseNotesPreview" depth="3" class="block whitespace-pre-line text-xs">
-                    {{ releaseNotesPreview }}
-                  </NText>
-                </div>
+          <Card
+            v-for="link in links"
+            :key="link.url"
+            class="cursor-pointer transition-colors hover:bg-accent/40"
+            @click="handleLinkClick(link)"
+          >
+            <CardContent>
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-sm text-muted-foreground">
+                  {{ link.label }}
+                </span>
+                <span class="text-xs text-muted-foreground">
+                  {{ link.display }}
+                </span>
               </div>
-            </NAlert>
-          </NSpace>
-        </NCard>
-
-        <NCard
-          v-for="link in links"
-          :key="link.url"
-          size="small"
-          hoverable
-          embedded
-          class="link-card cursor-pointer"
-          @click="handleLinkClick(link)"
-        >
-          <div class="flex items-center justify-between gap-3">
-            <NText depth="2">
-              {{ link.label }}
-            </NText>
-            <NText depth="3" class="text-xs">
-              {{ link.display }}
-            </NText>
-          </div>
-        </NCard>
-      </NSpace>
-    </NCard>
+            </CardContent>
+          </Card>
+        </div>
+      </CardContent>
+    </Card>
   </main>
 </template>
-
-<style scoped>
-</style>

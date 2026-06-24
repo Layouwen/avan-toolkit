@@ -33,13 +33,18 @@ function copyScreensaverHtmlToIndex(rendererName: string, entryHtml: string): Pl
 
 // https://vitejs.dev/config
 export default defineConfig(({ forgeConfigSelf }) => {
-  const rendererName = forgeConfigSelf.name;
+  const rendererName = forgeConfigSelf?.name ?? 'main_window';
   const entryHtml = rendererName === 'screensaver_window'
     ? 'screensaver-vue.html'
     : 'index.html';
 
   return {
     plugins: [tailwindcss(), vue(), copyScreensaverHtmlToIndex(rendererName, entryHtml)],
+    resolve: {
+      alias: {
+        '@': resolve(rootDir, 'src'),
+      },
+    },
     build: {
       rollupOptions: {
         input: resolve(rootDir, entryHtml),

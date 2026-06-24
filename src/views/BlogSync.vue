@@ -1,28 +1,29 @@
 <script setup lang="ts">
-import type { TreeOption } from 'naive-ui';
 import type { AppConfig, BlogValidationIssue, BlogValidationResult, ObsidianBlog } from '../electron-api.d';
-import {
-  NAlert,
-  NAutoComplete,
-  NButton,
-  NCard,
-  NDropdown,
-  NEmpty,
-  NForm,
-  NFormItem,
-  NInput,
-  NModal,
-  NPopconfirm,
-  NSelect,
-  NSpace,
-  NTabPane,
-  NTabs,
-  NTag,
-  NThing,
-  NTree,
-} from 'naive-ui';
-import { computed, h, nextTick, onMounted, onUnmounted, ref, toRaw } from 'vue';
+import type { BlogTreeNode } from '@/components/BlogTree.vue';
+import type { BadgeVariants } from '@/components/ui/badge';
+import { CheckCircle2Icon, ExternalLinkIcon, FolderOpenIcon, Loader2Icon, PlusIcon, RefreshCwIcon, RotateCcwIcon, XIcon } from '@lucide/vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, toRaw } from 'vue';
 import { useI18n } from 'vue-i18n';
+import BlogTree from '@/components/BlogTree.vue';
+import ConfirmButton from '@/components/ConfirmButton.vue';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const { t } = useI18n();
 
@@ -31,15 +32,6 @@ interface LogLine {
   text: string;
   level: 'info' | 'success' | 'warn' | 'error';
 }
-
-type BlogTreeNode = TreeOption & {
-  key: string;
-  label: string;
-  kind: 'folder' | 'blog';
-  directoryPath?: string;
-  blog?: ObsidianBlog;
-  children?: BlogTreeNode[];
-};
 
 type BlogSortBy = 'fileName' | 'title' | 'updatedAt';
 type SortOrder = 'asc' | 'desc';
@@ -188,16 +180,10 @@ const blogContextMenuOptions = computed(() => {
   ];
 });
 
-const tagFilterSelectStyle = computed(() => {
-  const labels = selectedTagFilters.value.length > 0
-    ? selectedTagFilters.value
-    : [t('blogSync.blogs.tagSearchPlaceholder')];
-  const contentWidth = labels.reduce((width, label) => width + label.length * 8 + 42, 48);
-  return {
-    width: `${Math.min(Math.max(contentWidth, 220), 560)}px`,
-    maxWidth: '100%',
-  };
-});
+const contextMenuStyle = computed(() => ({
+  left: `${contextMenuX.value}px`,
+  top: `${contextMenuY.value}px`,
+}));
 
 const filteredBlogs = computed(() => {
   if (selectedTagFilters.value.length === 0) {
@@ -258,7 +244,6 @@ const blogTreeData = computed<BlogTreeNode[]>(() => {
       label: blog.title,
       kind: 'blog',
       blog,
-      isLeaf: true,
     });
   }
 
@@ -327,6 +312,7 @@ function plainConfig(): AppConfig {
 onMounted(async () => {
   config.value = await window.electronAPI.getConfig();
   await loadBlogs();
+  window.addEventListener('click', closeBlogContextMenu);
   window.electronAPI.onSyncLog((message, level) => {
     logs.value.push({ id: logIdCounter++, text: message, level: level as LogLine['level'] });
     nextTick(() => {
@@ -339,6 +325,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.electronAPI.offSyncLog();
+  window.removeEventListener('click', closeBlogContextMenu);
 });
 
 type BlogPathField = 'obsidianBlogDir' | 'hexoBlogDir';
@@ -462,14 +449,6 @@ function formatUpdatedAt(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value));
-}
-
-function showDirectoryOptions() {
-  return directoryOptions.value.length > 0;
-}
-
-function showCategoryOptions() {
-  return categoryOptions.value.length > 0;
 }
 
 function parseCategoryPath(value: string) {
@@ -600,78 +579,6 @@ function handleTagInputKeydown(event: KeyboardEvent) {
   }
 }
 
-function renderBlogTreeLabel({ option }: { option: TreeOption }) {
-  const node = option as BlogTreeNode;
-  if (node.kind === 'folder') {
-    const count = countBlogs(node);
-    return h('span', { class: 'font-medium text-[#d8dee9]' }, `${node.label} (${count})`);
-  }
-
-  const blog = node.blog;
-  const tagNodes = blog && blog.tags.length > 0
-    ? h(
-        'div',
-        { class: 'mt-1 flex flex-wrap gap-1' },
-        blog.tags.map(tag => h(
-          NTag,
-          {
-            key: tag,
-            size: 'small',
-            type: 'info',
-            round: true,
-          },
-          { default: () => tag },
-        )),
-      )
-    : null;
-
-  return h('div', { class: 'min-w-0 py-1' }, [
-    h('div', { class: 'truncate text-[#e5e7eb]' }, node.label),
-    blog
-      ? h('div', { class: 'text-xs text-[#94a3b8] break-all' }, `${blog.relativePath} · ${formatUpdatedAt(blog.updatedAt)}`)
-      : null,
-    tagNodes,
-  ]);
-}
-
-function renderBlogTreeSuffix({ option }: { option: TreeOption }) {
-  const node = option as BlogTreeNode;
-  const blog = node.blog;
-  if (!blog) {
-    return null;
-  }
-
-  return h(
-    NPopconfirm,
-    {
-      positiveText: t('blogSync.blogs.confirmRemove'),
-      negativeText: t('blogSync.blogs.cancelRemove'),
-      onPositiveClick: () => removeBlog(blog),
-    },
-    {
-      trigger: () => h(
-        NButton,
-        {
-          size: 'small',
-          type: 'error',
-          tertiary: true,
-          loading: deletingBlogId.value === blog.id,
-          onClick: (event: MouseEvent) => event.stopPropagation(),
-        },
-        { default: () => t('blogSync.blogs.remove') },
-      ),
-      default: () => t('blogSync.blogs.removePrompt', { title: blog.title }),
-    },
-  );
-}
-
-function countBlogs(node: BlogTreeNode): number {
-  if (node.kind === 'blog') {
-    return 1;
-  }
-  return (node.children || []).reduce((count, child) => count + countBlogs(child as BlogTreeNode), 0);
-}
-
 function openBlogContextMenu(event: MouseEvent, node: BlogTreeNode) {
   event.preventDefault();
   contextMenuNode.value = node;
@@ -679,6 +586,10 @@ function openBlogContextMenu(event: MouseEvent, node: BlogTreeNode) {
   contextMenuX.value = event.clientX;
   contextMenuY.value = event.clientY;
   contextMenuShow.value = true;
+}
+
+function closeBlogContextMenu() {
+  contextMenuShow.value = false;
 }
 
 function handleBlogContextMenuSelect(key: string) {
@@ -707,13 +618,6 @@ function handleBlogContextMenuSelect(key: string) {
   }
 
   renameModalShow.value = true;
-}
-
-function blogNodeProps({ option }: { option: TreeOption }) {
-  const node = option as BlogTreeNode;
-  return {
-    onContextmenu: (event: MouseEvent) => openBlogContextMenu(event, node),
-  };
 }
 
 async function confirmRename() {
@@ -828,8 +732,62 @@ function clearLogs() {
   logs.value = [];
 }
 
-function issueTagType(issue: BlogValidationIssue) {
-  return issue.severity === 'error' ? 'error' : 'warning';
+function issueBadgeVariant(issue: BlogValidationIssue): BadgeVariants['variant'] {
+  return issue.severity === 'error' ? 'destructive' : 'secondary';
+}
+
+function statusBadgeVariant(): BadgeVariants['variant'] {
+  if (status.value === 'success') {
+    return 'default';
+  }
+  if (status.value === 'error') {
+    return 'destructive';
+  }
+  if (status.value === 'syncing') {
+    return 'secondary';
+  }
+  return 'outline';
+}
+
+function logLineClass(level: LogLine['level']) {
+  return {
+    info: 'text-muted-foreground',
+    success: 'text-foreground',
+    warn: 'text-foreground',
+    error: 'text-destructive',
+  }[level];
+}
+
+function updateHexoEditorCommand(value: unknown) {
+  if (value === 'cursor' || value === 'code') {
+    config.value.hexoEditorCommand = value;
+    void saveConfig();
+  }
+}
+
+function updateBlogSortBy(value: unknown) {
+  if (value === 'fileName' || value === 'title' || value === 'updatedAt') {
+    blogSortBy.value = value;
+  }
+}
+
+function updateBlogSortOrder(value: unknown) {
+  if (value === 'asc' || value === 'desc') {
+    blogSortOrder.value = value;
+  }
+}
+
+function updateSelectedTagFilters(value: unknown) {
+  selectedTagFilters.value = Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+}
+
+function handleCreateModalOpen(open: boolean) {
+  createModalShow.value = open;
+  if (!open) {
+    resetCreateBlogForm();
+  }
 }
 
 function canDeleteHexoOrphanIssue(issue: BlogValidationIssue) {
@@ -902,186 +860,229 @@ function openHexoProjectInEditor() {
 
 <template>
   <main class="p-6 min-h-full">
-    <NTabs type="line" animated>
-      <NTabPane name="sync" :tab="t('blogSync.tabs.sync')">
+    <Tabs default-value="sync" class="gap-4">
+      <TabsList>
+        <TabsTrigger value="sync">
+          {{ t('blogSync.tabs.sync') }}
+        </TabsTrigger>
+        <TabsTrigger value="blogs">
+          {{ t('blogSync.tabs.blogs') }}
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="sync">
         <div class="flex flex-col gap-5">
-          <NCard :title="t('blogSync.config.title')" embedded>
-            <NForm label-placement="top">
-              <NFormItem :label="t('blogSync.config.obsidianBlogDir')">
-                <div class="flex w-full items-center gap-2">
-                  <NInput
-                    v-model:value="config.obsidianBlogDir"
-                    class="min-w-0 flex-1"
-                    :placeholder="t('blogSync.config.obsidianPlaceholder')"
-                    @blur="saveConfig"
-                  />
-                  <NButton @click="browseDir('obsidianBlogDir')">
-                    {{ t('blogSync.config.browse') }}
-                  </NButton>
-                </div>
-              </NFormItem>
+          <Card>
+            <CardHeader>
+              <CardTitle class="text-base">
+                {{ t('blogSync.config.title') }}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel for="obsidian-blog-dir">
+                    {{ t('blogSync.config.obsidianBlogDir') }}
+                  </FieldLabel>
+                  <div class="flex w-full items-center gap-2">
+                    <Input
+                      id="obsidian-blog-dir"
+                      v-model="config.obsidianBlogDir"
+                      class="min-w-0 flex-1"
+                      :placeholder="t('blogSync.config.obsidianPlaceholder')"
+                      @blur="saveConfig"
+                    />
+                    <Button variant="secondary" @click="browseDir('obsidianBlogDir')">
+                      <FolderOpenIcon data-icon="inline-start" />
+                      {{ t('blogSync.config.browse') }}
+                    </Button>
+                  </div>
+                </Field>
 
-              <NFormItem :label="t('blogSync.config.hexoBlogDir')">
-                <div class="flex w-full items-center gap-2">
-                  <NInput
-                    v-model:value="config.hexoBlogDir"
-                    class="min-w-0 flex-1"
-                    :placeholder="t('blogSync.config.hexoPlaceholder')"
-                    @blur="saveConfig"
-                  />
-                  <NButton @click="browseDir('hexoBlogDir')">
-                    {{ t('blogSync.config.browse') }}
-                  </NButton>
-                </div>
-              </NFormItem>
+                <Field>
+                  <FieldLabel for="hexo-blog-dir">
+                    {{ t('blogSync.config.hexoBlogDir') }}
+                  </FieldLabel>
+                  <div class="flex w-full items-center gap-2">
+                    <Input
+                      id="hexo-blog-dir"
+                      v-model="config.hexoBlogDir"
+                      class="min-w-0 flex-1"
+                      :placeholder="t('blogSync.config.hexoPlaceholder')"
+                      @blur="saveConfig"
+                    />
+                    <Button variant="secondary" @click="browseDir('hexoBlogDir')">
+                      <FolderOpenIcon data-icon="inline-start" />
+                      {{ t('blogSync.config.browse') }}
+                    </Button>
+                  </div>
+                </Field>
 
-              <NFormItem :label="t('blogSync.config.hexoEditorCommand')">
-                <NSelect
-                  v-model:value="config.hexoEditorCommand"
-                  :options="hexoEditorCommandOptions"
-                  @update:value="saveConfig"
-                />
-              </NFormItem>
-            </NForm>
-          </NCard>
+                <Field>
+                  <FieldLabel>{{ t('blogSync.config.hexoEditorCommand') }}</FieldLabel>
+                  <Select :model-value="config.hexoEditorCommand" @update:model-value="updateHexoEditorCommand">
+                    <SelectTrigger class="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem v-for="option in hexoEditorCommandOptions" :key="option.value" :value="option.value">
+                          {{ option.label }}
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldGroup>
+            </CardContent>
+          </Card>
 
-          <NCard embedded>
-            <NSpace align="center" justify="space-between">
-              <NSpace align="center">
-                <NButton
-                  type="primary"
-                  :loading="syncing"
+          <Card>
+            <CardContent>
+              <div class="flex flex-wrap items-center gap-2">
+                <Button
                   :disabled="syncing || pullingBlog || !config.obsidianBlogDir || !config.hexoBlogDir"
                   @click="startSync"
                 >
+                  <Loader2Icon v-if="syncing" data-icon="inline-start" class="animate-spin" />
+                  <CheckCircle2Icon v-else data-icon="inline-start" />
                   {{ syncing ? t('blogSync.action.syncing') : t('blogSync.action.sync') }}
-                </NButton>
-                <NButton
-                  tertiary
-                  :loading="pullingBlog"
+                </Button>
+                <Button
+                  variant="secondary"
                   :disabled="syncing || pullingBlog || !config.hexoBlogDir"
                   @click="pullBlog"
                 >
+                  <Loader2Icon v-if="pullingBlog" data-icon="inline-start" class="animate-spin" />
+                  <RotateCcwIcon v-else data-icon="inline-start" />
                   {{ pullingBlog ? t('blogSync.action.pulling') : t('blogSync.action.pull') }}
-                </NButton>
-                <NTag
-                  :type="status === 'success' ? 'success' : status === 'error' ? 'error' : status === 'syncing' ? 'warning' : 'default'"
-                  round
-                >
+                </Button>
+                <Badge :variant="statusBadgeVariant()">
                   {{ t(`blogSync.status.${status}`) }}
-                </NTag>
-              </NSpace>
-            </NSpace>
-          </NCard>
-
-          <NCard class="flex-1 min-h-0" embedded>
-            <template #header>
-              {{ t('blogSync.logs.title') }}
-            </template>
-            <template #header-extra>
-              <NButton tertiary size="small" @click="clearLogs">
-                {{ t('blogSync.logs.clear') }}
-              </NButton>
-            </template>
-
-            <div
-              ref="logContainer"
-              class="h-[360px] overflow-y-auto rounded-md border border-[#2e3440] bg-[#141414] p-3 font-mono text-[12.5px] leading-relaxed"
-            >
-              <NThing
-                v-for="line in logs"
-                :key="line.id"
-                class="whitespace-pre-wrap break-all"
-                :class="{
-                  'text-[#c9d1d9]': line.level === 'info',
-                  'text-[#40c074]': line.level === 'success',
-                  'text-[#f0a020]': line.level === 'warn',
-                  'text-[#e05252]': line.level === 'error',
-                }"
-              >
-                {{ line.text }}
-              </NThing>
-
-              <div v-if="logs.length === 0" class="text-[#555] italic text-center mt-5">
-                {{ t('blogSync.logs.empty') }}
+                </Badge>
               </div>
-            </div>
-          </NCard>
+            </CardContent>
+          </Card>
 
-          <NCard embedded>
-            <template #header>
-              {{ t('blogSync.validation.title') }}
-            </template>
-            <template #header-extra>
-              <NSpace :size="8" justify="end">
-                <NButton
-                  tertiary
-                  size="small"
-                  :disabled="!config.obsidianBlogDir"
-                  @click="openConfiguredBlogDir('obsidian')"
-                >
-                  {{ t('blogSync.validation.openObsidianDir') }}
-                </NButton>
-                <NButton
-                  tertiary
-                  size="small"
-                  :disabled="!config.hexoBlogDir"
-                  @click="openConfiguredBlogDir('hexo')"
-                >
-                  {{ t('blogSync.validation.openHexoDir') }}
-                </NButton>
-                <NButton
-                  tertiary
-                  size="small"
-                  :disabled="!config.obsidianBlogDir"
-                  @click="openObsidianPage"
-                >
-                  {{ t('blogSync.validation.openObsidianPage') }}
-                </NButton>
-                <NButton
-                  tertiary
-                  size="small"
-                  :disabled="!config.hexoBlogDir"
-                  @click="openHexoProjectInEditor"
-                >
-                  {{ t('blogSync.validation.openProjectDir') }}
-                </NButton>
-                <NButton
-                  tertiary
-                  size="small"
-                  :loading="validatingBlogs"
-                  :disabled="!config.obsidianBlogDir"
-                  @click="loadValidation"
-                >
-                  {{ t('blogSync.validation.refresh') }}
-                </NButton>
-              </NSpace>
-            </template>
-
-            <NSpace vertical :size="12">
-              <NAlert v-if="validationError" type="error" closable @close="validationError = ''">
-                {{ validationError }}
-              </NAlert>
-
-              <NAlert
-                v-if="validationResult.ok"
-                type="success"
+          <Card class="min-h-0 flex-1">
+            <CardHeader class="flex flex-row items-center justify-between">
+              <CardTitle class="text-base">
+                {{ t('blogSync.logs.title') }}
+              </CardTitle>
+              <Button variant="ghost" size="sm" @click="clearLogs">
+                {{ t('blogSync.logs.clear') }}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div
+                ref="logContainer"
+                class="h-[360px] overflow-y-auto rounded-md border bg-background p-3 font-mono text-[12.5px] leading-relaxed"
               >
-                {{ t('blogSync.validation.ok', {
-                  count: validationResult.checkedFiles,
-                  obsidian: validationResult.obsidianCheckedFiles,
-                  hexo: validationResult.hexoCheckedFiles,
-                }) }}
-              </NAlert>
+                <div
+                  v-for="line in logs"
+                  :key="line.id"
+                  class="whitespace-pre-wrap break-all"
+                  :class="logLineClass(line.level)"
+                >
+                  {{ line.text }}
+                </div>
+
+                <div v-if="logs.length === 0" class="mt-5 text-center text-muted-foreground italic">
+                  {{ t('blogSync.logs.empty') }}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <CardTitle class="text-base">
+                  {{ t('blogSync.validation.title') }}
+                </CardTitle>
+                <div class="flex flex-wrap justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    :disabled="!config.obsidianBlogDir"
+                    @click="openConfiguredBlogDir('obsidian')"
+                  >
+                    <FolderOpenIcon data-icon="inline-start" />
+                    {{ t('blogSync.validation.openObsidianDir') }}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    :disabled="!config.hexoBlogDir"
+                    @click="openConfiguredBlogDir('hexo')"
+                  >
+                    <FolderOpenIcon data-icon="inline-start" />
+                    {{ t('blogSync.validation.openHexoDir') }}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    :disabled="!config.obsidianBlogDir"
+                    @click="openObsidianPage"
+                  >
+                    <ExternalLinkIcon data-icon="inline-start" />
+                    {{ t('blogSync.validation.openObsidianPage') }}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    :disabled="!config.hexoBlogDir"
+                    @click="openHexoProjectInEditor"
+                  >
+                    <ExternalLinkIcon data-icon="inline-start" />
+                    {{ t('blogSync.validation.openProjectDir') }}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    :disabled="!config.obsidianBlogDir"
+                    @click="loadValidation"
+                  >
+                    <Loader2Icon v-if="validatingBlogs" data-icon="inline-start" class="animate-spin" />
+                    <RefreshCwIcon v-else data-icon="inline-start" />
+                    {{ t('blogSync.validation.refresh') }}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent class="flex flex-col gap-3">
+              <Alert v-if="validationError" variant="destructive">
+                <AlertDescription class="flex items-start justify-between gap-3">
+                  <span>{{ validationError }}</span>
+                  <Button variant="ghost" size="icon-sm" @click="validationError = ''">
+                    <XIcon />
+                  </Button>
+                </AlertDescription>
+              </Alert>
+
+              <Alert
+                v-if="validationResult.ok"
+              >
+                <AlertDescription>
+                  {{ t('blogSync.validation.ok', {
+                    count: validationResult.checkedFiles,
+                    obsidian: validationResult.obsidianCheckedFiles,
+                    hexo: validationResult.hexoCheckedFiles,
+                  }) }}
+                </AlertDescription>
+              </Alert>
 
               <template v-else>
-                <NAlert :type="validationResult.errorCount > 0 ? 'error' : 'warning'">
-                  {{ t('blogSync.validation.failed', {
-                    count: validationResult.issues.length,
-                    errors: validationResult.errorCount,
-                    warnings: validationResult.warningCount,
-                  }) }}
-                </NAlert>
+                <Alert :variant="validationResult.errorCount > 0 ? 'destructive' : 'default'">
+                  <AlertDescription>
+                    {{ t('blogSync.validation.failed', {
+                      count: validationResult.issues.length,
+                      errors: validationResult.errorCount,
+                      warnings: validationResult.warningCount,
+                    }) }}
+                  </AlertDescription>
+                </Alert>
                 <div class="validation-list">
                   <div
                     v-for="issue in validationResult.issues"
@@ -1090,233 +1091,314 @@ function openHexoProjectInEditor() {
                   >
                     <div class="min-w-0">
                       <div class="flex flex-wrap items-center gap-2">
-                        <NTag size="small" :type="issue.source === 'hexo' ? 'info' : 'default'" round>
+                        <Badge :variant="issue.source === 'hexo' ? 'secondary' : 'outline'">
                           {{ issue.source }}
-                        </NTag>
-                        <NTag size="small" :type="issueTagType(issue)" round>
+                        </Badge>
+                        <Badge :variant="issueBadgeVariant(issue)">
                           {{ issue.field }}
-                        </NTag>
-                        <span class="break-all text-[#e5e7eb]">{{ issue.relativePath }}</span>
+                        </Badge>
+                        <span class="break-all text-foreground">{{ issue.relativePath }}</span>
                       </div>
-                      <div class="mt-1 text-sm text-[#b6c2d1]">
+                      <div class="mt-1 text-sm text-muted-foreground">
                         {{ issue.message }}
                       </div>
                     </div>
                     <div class="flex shrink-0 items-center gap-2">
-                      <NPopconfirm
+                      <ConfirmButton
                         v-if="canDeleteHexoOrphanIssue(issue)"
-                        :positive-text="t('blogSync.validation.confirmDeleteHexoOrphan')"
-                        :negative-text="t('blogSync.validation.cancelDeleteHexoOrphan')"
-                        @positive-click="deleteHexoOrphanBlog(issue)"
+                        :title="t('blogSync.validation.deleteHexoOrphan')"
+                        :description="t('blogSync.validation.deleteHexoOrphanPrompt', { path: issue.relativePath })"
+                        :confirm-text="t('blogSync.validation.confirmDeleteHexoOrphan')"
+                        :cancel-text="t('blogSync.validation.cancelDeleteHexoOrphan')"
+                        variant="destructive"
+                        size="sm"
+                        :disabled="Boolean(deletingHexoIssueId)"
+                        @confirm="deleteHexoOrphanBlog(issue)"
                       >
-                        <template #trigger>
-                          <NButton
-                            size="small"
-                            tertiary
-                            type="error"
-                            :loading="deletingHexoIssueId === issue.id"
-                          >
-                            {{ t('blogSync.validation.deleteHexoOrphan') }}
-                          </NButton>
-                        </template>
-                        {{ t('blogSync.validation.deleteHexoOrphanPrompt', { path: issue.relativePath }) }}
-                      </NPopconfirm>
-                      <NButton
-                        size="small"
-                        tertiary
-                        :loading="openingValidationIssueId === issue.id"
+                        <Loader2Icon v-if="deletingHexoIssueId === issue.id" data-icon="inline-start" class="animate-spin" />
+                        {{ t('blogSync.validation.deleteHexoOrphan') }}
+                      </ConfirmButton>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        :disabled="Boolean(openingValidationIssueId)"
                         @click="openValidationIssue(issue)"
                       >
+                        <Loader2Icon v-if="openingValidationIssueId === issue.id" data-icon="inline-start" class="animate-spin" />
                         {{ t('blogSync.validation.open') }}
-                      </NButton>
+                      </Button>
                     </div>
                   </div>
                 </div>
               </template>
-            </NSpace>
-          </NCard>
+            </CardContent>
+          </Card>
         </div>
-      </NTabPane>
+      </TabsContent>
 
-      <NTabPane name="blogs" :tab="t('blogSync.tabs.blogs')">
-        <NCard embedded>
-          <template #header>
-            {{ t('blogSync.blogs.title') }}
-          </template>
-          <template #header-extra>
-            <NSpace :size="8" align="center">
-              <NButton
-                size="small"
-                type="primary"
-                :disabled="!config.obsidianBlogDir || creatingBlog"
-                @click="openCreateBlogModal()"
-              >
-                {{ t('blogSync.blogs.add') }}
-              </NButton>
-              <NButton size="small" tertiary :loading="loadingBlogs" @click="loadBlogs">
-                {{ t('blogSync.blogs.refresh') }}
-              </NButton>
-            </NSpace>
-          </template>
+      <TabsContent value="blogs">
+        <Card>
+          <CardHeader>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle class="text-base">
+                {{ t('blogSync.blogs.title') }}
+              </CardTitle>
+              <div class="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  :disabled="!config.obsidianBlogDir || creatingBlog"
+                  @click="openCreateBlogModal()"
+                >
+                  <PlusIcon data-icon="inline-start" />
+                  {{ t('blogSync.blogs.add') }}
+                </Button>
+                <Button size="sm" variant="secondary" :disabled="loadingBlogs" @click="loadBlogs">
+                  <Loader2Icon v-if="loadingBlogs" data-icon="inline-start" class="animate-spin" />
+                  <RefreshCwIcon v-else data-icon="inline-start" />
+                  {{ t('blogSync.blogs.refresh') }}
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
 
-          <NSpace vertical :size="14">
-            <NAlert v-if="blogError" type="error" closable @close="blogError = ''">
-              {{ blogError }}
-            </NAlert>
+          <CardContent class="flex flex-col gap-4">
+            <Alert v-if="blogError" variant="destructive">
+              <AlertDescription class="flex items-start justify-between gap-3">
+                <span>{{ blogError }}</span>
+                <Button variant="ghost" size="icon-sm" @click="blogError = ''">
+                  <XIcon />
+                </Button>
+              </AlertDescription>
+            </Alert>
 
             <template v-if="blogs.length > 0">
-              <NSpace :size="8" align="center">
-                <NSelect
-                  v-model:value="selectedTagFilters"
-                  class="tag-filter-select"
-                  :style="tagFilterSelectStyle"
-                  size="small"
-                  multiple
-                  filterable
-                  clearable
-                  :options="tagFilterOptions"
-                  :placeholder="t('blogSync.blogs.tagSearchPlaceholder')"
-                />
-                <NSelect
-                  v-model:value="blogSortBy"
-                  class="w-[150px]"
-                  size="small"
-                  :options="sortByOptions"
-                />
-                <NSelect
-                  v-model:value="blogSortOrder"
-                  class="w-[140px]"
-                  size="small"
-                  :options="sortOrderOptions"
-                />
-                <NButton size="small" tertiary @click="expandAllBlogFolders">
-                  {{ t('blogSync.blogs.expandAll') }}
-                </NButton>
-                <NButton size="small" tertiary @click="collapseAllBlogFolders">
-                  {{ t('blogSync.blogs.collapseAll') }}
-                </NButton>
-              </NSpace>
+              <div class="flex flex-col gap-3">
+                <div v-if="tagFilterOptions.length > 0" class="flex flex-col gap-2">
+                  <div class="text-xs text-muted-foreground">
+                    {{ t('blogSync.blogs.tagSearchPlaceholder') }}
+                  </div>
+                  <ToggleGroup
+                    type="multiple"
+                    :model-value="selectedTagFilters"
+                    class="flex flex-wrap justify-start gap-2"
+                    @update:model-value="updateSelectedTagFilters"
+                  >
+                    <ToggleGroupItem v-for="option in tagFilterOptions" :key="option.value" :value="option.value">
+                      {{ option.label }}
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
 
-              <NDropdown
-                trigger="manual"
-                placement="bottom-start"
-                :show="contextMenuShow"
-                :x="contextMenuX"
-                :y="contextMenuY"
-                :options="blogContextMenuOptions"
-                @select="handleBlogContextMenuSelect"
-                @clickoutside="contextMenuShow = false"
-              />
-              <NTree
-                v-if="sortedBlogs.length > 0"
-                v-model:expanded-keys="expandedBlogKeys"
-                :data="blogTreeData"
-                :node-props="blogNodeProps"
-                :render-label="renderBlogTreeLabel"
-                :render-suffix="renderBlogTreeSuffix"
-                block-line
-                expand-on-click
-              />
-              <NEmpty v-else :description="t('blogSync.blogs.noTagMatches')" />
-              <NModal
-                v-model:show="renameModalShow"
-                preset="dialog"
-                :title="renameMode === 'title' ? t('blogSync.blogs.renameTitle') : t('blogSync.blogs.renameFileName')"
-                :positive-text="t('blogSync.blogs.renameConfirm')"
-                :negative-text="t('blogSync.blogs.renameCancel')"
-                :loading="renaming"
-                :positive-button-props="{ disabled: !renameValue.trim() }"
-                @positive-click="confirmRename"
+                <div class="flex flex-wrap items-center gap-2">
+                  <Select :model-value="blogSortBy" @update:model-value="updateBlogSortBy">
+                    <SelectTrigger class="w-[160px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem v-for="option in sortByOptions" :key="option.value" :value="option.value">
+                          {{ option.label }}
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <Select :model-value="blogSortOrder" @update:model-value="updateBlogSortOrder">
+                    <SelectTrigger class="w-[150px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem v-for="option in sortOrderOptions" :key="option.value" :value="option.value">
+                          {{ option.label }}
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" variant="secondary" @click="expandAllBlogFolders">
+                    {{ t('blogSync.blogs.expandAll') }}
+                  </Button>
+                  <Button size="sm" variant="secondary" @click="collapseAllBlogFolders">
+                    {{ t('blogSync.blogs.collapseAll') }}
+                  </Button>
+                </div>
+              </div>
+
+              <div
+                v-if="contextMenuShow"
+                class="fixed z-50 min-w-44 rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+                :style="contextMenuStyle"
+                @click.stop
               >
-                <NInput
-                  v-model:value="renameValue"
-                  :placeholder="renameMode === 'title'
-                    ? t('blogSync.blogs.renameTitlePlaceholder')
-                    : t('blogSync.blogs.renameFileNamePlaceholder')"
-                  @keyup.enter="confirmRename"
-                />
-              </NModal>
+                <Button
+                  v-for="option in blogContextMenuOptions"
+                  :key="option.key"
+                  variant="ghost"
+                  class="w-full justify-start"
+                  @click="handleBlogContextMenuSelect(option.key)"
+                >
+                  {{ option.label }}
+                </Button>
+              </div>
+
+              <BlogTree
+                v-if="sortedBlogs.length > 0"
+                :nodes="blogTreeData"
+                :expanded-keys="expandedBlogKeys"
+                :deleting-blog-id="deletingBlogId"
+                :remove-label="t('blogSync.blogs.remove')"
+                :remove-title="t('blogSync.blogs.remove')"
+                :remove-confirm-text="t('blogSync.blogs.confirmRemove')"
+                :remove-cancel-text="t('blogSync.blogs.cancelRemove')"
+                :remove-prompt="(blog: ObsidianBlog) => t('blogSync.blogs.removePrompt', { title: blog.title })"
+                :format-updated-at="formatUpdatedAt"
+                @update:expanded-keys="expandedBlogKeys = $event"
+                @contextmenu="openBlogContextMenu"
+                @remove="removeBlog"
+              />
+              <Empty v-else>
+                <EmptyHeader>
+                  <EmptyTitle>{{ t('blogSync.blogs.noTagMatches') }}</EmptyTitle>
+                  <EmptyDescription>{{ t('blogSync.blogs.noTagMatches') }}</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+
+              <Dialog v-model:open="renameModalShow">
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{{ renameMode === 'title' ? t('blogSync.blogs.renameTitle') : t('blogSync.blogs.renameFileName') }}</DialogTitle>
+                  </DialogHeader>
+                  <Input
+                    v-model="renameValue"
+                    :placeholder="renameMode === 'title'
+                      ? t('blogSync.blogs.renameTitlePlaceholder')
+                      : t('blogSync.blogs.renameFileNamePlaceholder')"
+                    @keyup.enter="confirmRename"
+                  />
+                  <DialogFooter>
+                    <Button variant="secondary" @click="renameModalShow = false">
+                      {{ t('blogSync.blogs.renameCancel') }}
+                    </Button>
+                    <Button :disabled="!renameValue.trim() || renaming" @click="confirmRename">
+                      <Loader2Icon v-if="renaming" data-icon="inline-start" class="animate-spin" />
+                      {{ t('blogSync.blogs.renameConfirm') }}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </template>
 
-            <NEmpty v-else :description="loadingBlogs ? t('blogSync.blogs.loading') : t('blogSync.blogs.empty')" />
-            <NModal
-              v-model:show="createModalShow"
-              preset="dialog"
-              :title="t('blogSync.blogs.createTitle')"
-              :positive-text="t('blogSync.blogs.createConfirm')"
-              :negative-text="t('blogSync.blogs.createCancel')"
-              :loading="creatingBlog"
-              :positive-button-props="{ disabled: !config.obsidianBlogDir || !newBlogTitle.trim() }"
-              @positive-click="addBlog"
-              @after-leave="resetCreateBlogForm"
-            >
-              <NForm label-placement="top" class="mt-2">
-                <NFormItem :label="t('blogSync.blogs.titleLabel')">
-                  <NInput
-                    v-model:value="newBlogTitle"
-                    :placeholder="t('blogSync.blogs.newTitlePlaceholder')"
-                    :disabled="!config.obsidianBlogDir || creatingBlog"
-                    @keyup.enter="addBlog"
-                  />
-                </NFormItem>
-                <NFormItem :label="t('blogSync.blogs.directoryLabel')">
-                  <NAutoComplete
-                    v-model:value="newBlogDirectory"
-                    :options="directoryOptions"
-                    :get-show="showDirectoryOptions"
-                    :placeholder="t('blogSync.blogs.directoryPlaceholder')"
-                    :disabled="!config.obsidianBlogDir || creatingBlog"
-                    clearable
-                    @keyup.enter="addBlog"
-                  />
-                </NFormItem>
-                <NFormItem :label="t('blogSync.blogs.tagsLabel')">
-                  <div
-                    class="tag-input-shell w-full"
-                    :class="{ 'tag-input-shell--disabled': !config.obsidianBlogDir || creatingBlog }"
-                  >
-                    <NTag
-                      v-for="(tag, index) in newBlogTags"
-                      :key="tag"
-                      size="small"
-                      type="info"
-                      round
-                      closable
+            <Empty v-else>
+              <EmptyHeader>
+                <EmptyTitle>{{ loadingBlogs ? t('blogSync.blogs.loading') : t('blogSync.blogs.empty') }}</EmptyTitle>
+              </EmptyHeader>
+            </Empty>
+
+            <Dialog :open="createModalShow" @update:open="handleCreateModalOpen">
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{{ t('blogSync.blogs.createTitle') }}</DialogTitle>
+                </DialogHeader>
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel for="new-blog-title">
+                      {{ t('blogSync.blogs.titleLabel') }}
+                    </FieldLabel>
+                    <Input
+                      id="new-blog-title"
+                      v-model="newBlogTitle"
+                      :placeholder="t('blogSync.blogs.newTitlePlaceholder')"
                       :disabled="!config.obsidianBlogDir || creatingBlog"
-                      @close="removeTag(index)"
-                    >
-                      {{ tag }}
-                    </NTag>
-                    <NInput
-                      :value="tagInputValue"
-                      class="tag-input-field"
-                      size="small"
-                      :placeholder="t('blogSync.blogs.tagsPlaceholder')"
-                      :disabled="!config.obsidianBlogDir || creatingBlog"
-                      :bordered="false"
-                      @update:value="handleTagInputUpdate"
-                      @keydown="handleTagInputKeydown"
-                      @blur="addTag()"
+                      @keyup.enter="addBlog"
                     />
-                  </div>
-                </NFormItem>
-                <NFormItem :label="t('blogSync.blogs.categoriesLabel')">
-                  <NAutoComplete
-                    v-model:value="newBlogCategories"
-                    :options="categoryOptions"
-                    :get-show="showCategoryOptions"
-                    :placeholder="t('blogSync.blogs.categoriesPlaceholder')"
-                    :disabled="!config.obsidianBlogDir || creatingBlog"
-                    clearable
-                    @keyup.enter="addBlog"
-                  />
-                </NFormItem>
-              </NForm>
-            </NModal>
-          </NSpace>
-        </NCard>
-      </NTabPane>
-    </NTabs>
+                  </Field>
+                  <Field>
+                    <FieldLabel for="new-blog-directory">
+                      {{ t('blogSync.blogs.directoryLabel') }}
+                    </FieldLabel>
+                    <Input
+                      id="new-blog-directory"
+                      v-model="newBlogDirectory"
+                      list="blog-directory-options"
+                      :placeholder="t('blogSync.blogs.directoryPlaceholder')"
+                      :disabled="!config.obsidianBlogDir || creatingBlog"
+                      @keyup.enter="addBlog"
+                    />
+                    <datalist id="blog-directory-options">
+                      <option v-for="option in directoryOptions" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                      </option>
+                    </datalist>
+                  </Field>
+                  <Field>
+                    <FieldLabel>{{ t('blogSync.blogs.tagsLabel') }}</FieldLabel>
+                    <div
+                      class="tag-input-shell w-full"
+                      :class="{ 'tag-input-shell--disabled': !config.obsidianBlogDir || creatingBlog }"
+                    >
+                      <Badge
+                        v-for="(tag, index) in newBlogTags"
+                        :key="tag"
+                        variant="secondary"
+                        class="gap-1"
+                      >
+                        {{ tag }}
+                        <button
+                          type="button"
+                          :disabled="!config.obsidianBlogDir || creatingBlog"
+                          class="rounded-full text-muted-foreground hover:text-foreground disabled:pointer-events-none"
+                          @click="removeTag(index)"
+                        >
+                          <XIcon class="size-3" />
+                        </button>
+                      </Badge>
+                      <Input
+                        :value="tagInputValue"
+                        class="tag-input-field"
+                        :placeholder="t('blogSync.blogs.tagsPlaceholder')"
+                        :disabled="!config.obsidianBlogDir || creatingBlog"
+                        @update:model-value="value => handleTagInputUpdate(String(value))"
+                        @keydown="handleTagInputKeydown"
+                        @blur="addTag()"
+                      />
+                    </div>
+                  </Field>
+                  <Field>
+                    <FieldLabel for="new-blog-categories">
+                      {{ t('blogSync.blogs.categoriesLabel') }}
+                    </FieldLabel>
+                    <Input
+                      id="new-blog-categories"
+                      v-model="newBlogCategories"
+                      list="blog-category-options"
+                      :placeholder="t('blogSync.blogs.categoriesPlaceholder')"
+                      :disabled="!config.obsidianBlogDir || creatingBlog"
+                      @keyup.enter="addBlog"
+                    />
+                    <datalist id="blog-category-options">
+                      <option v-for="option in categoryOptions" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                      </option>
+                    </datalist>
+                  </Field>
+                </FieldGroup>
+                <DialogFooter>
+                  <Button variant="secondary" @click="createModalShow = false">
+                    {{ t('blogSync.blogs.createCancel') }}
+                  </Button>
+                  <Button
+                    :disabled="!config.obsidianBlogDir || !newBlogTitle.trim() || creatingBlog"
+                    @click="addBlog"
+                  >
+                    <Loader2Icon v-if="creatingBlog" data-icon="inline-start" class="animate-spin" />
+                    {{ t('blogSync.blogs.createConfirm') }}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   </main>
 </template>
 
@@ -1327,18 +1409,18 @@ function openHexoProjectInEditor() {
   align-items: center;
   gap: 4px;
   flex-wrap: wrap;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   padding: 2px 6px;
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   transition:
-    border-color 0.2s var(--n-bezier),
-    box-shadow 0.2s var(--n-bezier);
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .tag-input-shell:focus-within {
-  border-color: #63e2b7;
-  box-shadow: 0 0 0 2px rgba(99, 226, 183, 0.2);
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 35%, transparent);
 }
 
 .tag-input-shell--disabled {
@@ -1349,29 +1431,6 @@ function openHexoProjectInEditor() {
 .tag-input-field {
   min-width: 72px;
   flex: 1;
-}
-
-.tag-filter-select {
-  flex: 0 1 auto;
-}
-
-.tag-filter-select :deep(.n-base-selection-tags) {
-  flex-wrap: wrap;
-  max-width: 100%;
-}
-
-.tag-filter-select :deep(.n-base-selection-tag-wrapper) {
-  max-width: 100%;
-}
-
-.tag-filter-select :deep(.n-tag) {
-  max-width: 100%;
-}
-
-.tag-filter-select :deep(.n-tag__content) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .validation-list {

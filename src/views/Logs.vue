@@ -1,18 +1,15 @@
 <script setup lang="ts">
 import type { AppLogEntry, LogFilters, LogLevel, LogModule } from '../electron-api.d';
-import {
-  NButton,
-  NCard,
-  NCollapse,
-  NCollapseItem,
-  NForm,
-  NFormItem,
-  NSelect,
-  NSpace,
-  NTag,
-} from 'naive-ui';
+import type { BadgeVariants } from '@/components/ui/badge';
+import { FolderOpenIcon, RefreshCwIcon, Trash2Icon } from '@lucide/vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const { t } = useI18n();
 
@@ -122,17 +119,17 @@ function levelLabel(level: LogLevel) {
   return t(`logsPage.levels.${level}`);
 }
 
-function levelTagType(level: LogLevel) {
+function levelBadgeVariant(level: LogLevel): BadgeVariants['variant'] {
   if (level === 'success') {
-    return 'success';
+    return 'default';
   }
   if (level === 'warn') {
-    return 'warning';
+    return 'secondary';
   }
   if (level === 'error') {
-    return 'error';
+    return 'destructive';
   }
-  return 'info';
+  return 'outline';
 }
 
 function handleModuleUpdate(value: string) {
@@ -169,93 +166,130 @@ onUnmounted(() => {
   <main class="logs-page min-h-full p-6">
     <div class="mx-auto flex max-w-6xl flex-col gap-4">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <h1 class="text-xl font-semibold text-[#e5e7eb]">
+        <h1 class="text-xl font-semibold text-foreground">
           {{ t('logsPage.title') }}
         </h1>
-        <NSpace>
-          <NButton secondary @click="loadLogs">
+        <div class="flex flex-wrap gap-2">
+          <Button variant="secondary" @click="loadLogs">
+            <RefreshCwIcon data-icon="inline-start" />
             {{ t('logsPage.refresh') }}
-          </NButton>
-          <NButton secondary @click="openLogFile">
+          </Button>
+          <Button variant="secondary" @click="openLogFile">
+            <FolderOpenIcon data-icon="inline-start" />
             {{ t('logsPage.openFile') }}
-          </NButton>
-          <NButton type="error" secondary @click="clearCurrentLogs">
+          </Button>
+          <Button variant="destructive" @click="clearCurrentLogs">
+            <Trash2Icon data-icon="inline-start" />
             {{ t('logsPage.clear') }}
-          </NButton>
-        </NSpace>
+          </Button>
+        </div>
       </div>
 
-      <NCard :title="t('logsPage.filters')" embedded>
-        <NForm label-placement="top">
-          <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <NFormItem :label="t('logsPage.module')" class="mb-0!">
-              <NSelect
-                :value="moduleFilter || 'all'"
-                :options="moduleOptions"
-                @update:value="handleModuleUpdate"
-              />
-            </NFormItem>
-            <NFormItem :label="t('logsPage.level')" class="mb-0!">
-              <NSelect
-                :value="levelFilter || 'all'"
-                :options="levelOptions"
-                @update:value="handleLevelUpdate"
-              />
-            </NFormItem>
-            <NFormItem :label="t('logsPage.sensitive')" class="mb-0!">
-              <NSelect
-                :value="sensitiveFilter"
-                :options="sensitiveOptions"
-                @update:value="handleSensitiveUpdate"
-              />
-            </NFormItem>
-          </div>
-        </NForm>
-      </NCard>
+      <Card>
+        <CardHeader>
+          <CardTitle class="text-base">
+            {{ t('logsPage.filters') }}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <Field>
+                <FieldLabel>{{ t('logsPage.module') }}</FieldLabel>
+                <Select :model-value="moduleFilter || 'all'" @update:model-value="value => handleModuleUpdate(String(value))">
+                  <SelectTrigger class="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem v-for="option in moduleOptions" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel>{{ t('logsPage.level') }}</FieldLabel>
+                <Select :model-value="levelFilter || 'all'" @update:model-value="value => handleLevelUpdate(String(value))">
+                  <SelectTrigger class="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem v-for="option in levelOptions" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel>{{ t('logsPage.sensitive') }}</FieldLabel>
+                <Select :model-value="sensitiveFilter" @update:model-value="value => handleSensitiveUpdate(value as 'all' | 'sensitive' | 'nonSensitive')">
+                  <SelectTrigger class="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem v-for="option in sensitiveOptions" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+          </FieldGroup>
+        </CardContent>
+      </Card>
 
-      <div v-if="filteredRunGroups.length === 0" class="rounded-md border border-[#2e3440] bg-[#141414] p-8 text-center text-[#94a3b8]">
+      <div v-if="filteredRunGroups.length === 0" class="rounded-md border bg-card p-8 text-center text-muted-foreground">
         {{ t('logsPage.empty') }}
       </div>
 
-      <NCollapse v-else accordion>
-        <NCollapseItem
+      <Accordion v-else type="single" collapsible class="flex flex-col gap-2">
+        <AccordionItem
           v-for="group in filteredRunGroups"
           :key="group.runId"
-          :name="group.runId"
+          :value="group.runId"
+          class="rounded-md border bg-card px-4"
         >
-          <template #header>
+          <AccordionTrigger>
             <div class="flex min-w-0 flex-wrap items-center gap-2">
-              <NTag v-if="group.module" type="info" size="small">
+              <Badge v-if="group.module" variant="secondary">
                 {{ moduleLabel(group.module) }}
-              </NTag>
-              <span class="text-[#e5e7eb]">{{ group.scope }}</span>
-              <span class="text-xs text-[#94a3b8]">{{ group.runId }}</span>
-              <span v-if="group.latest" class="text-xs text-[#94a3b8]">{{ formatTime(group.latest) }}</span>
+              </Badge>
+              <span class="text-foreground">{{ group.scope }}</span>
+              <span class="text-xs text-muted-foreground">{{ group.runId }}</span>
+              <span v-if="group.latest" class="text-xs text-muted-foreground">{{ formatTime(group.latest) }}</span>
             </div>
-          </template>
+          </AccordionTrigger>
 
-          <div class="overflow-hidden rounded-md border border-[#2e3440] bg-[#141414]">
-            <div
-              v-for="entry in group.entries"
-              :key="entry.id"
-              class="grid grid-cols-1 gap-2 border-b border-[#242b36] p-3 last:border-b-0 md:grid-cols-[110px_86px_minmax(0,1fr)]"
-            >
-              <div class="text-xs text-[#94a3b8]">
-                {{ formatTime(entry.timestamp) }}
+          <AccordionContent>
+            <div class="overflow-hidden rounded-md border bg-background">
+              <div
+                v-for="entry in group.entries"
+                :key="entry.id"
+                class="grid grid-cols-1 gap-2 border-b p-3 last:border-b-0 md:grid-cols-[110px_120px_minmax(0,1fr)]"
+              >
+                <div class="text-xs text-muted-foreground">
+                  {{ formatTime(entry.timestamp) }}
+                </div>
+                <div class="flex flex-wrap items-start gap-1">
+                  <Badge :variant="levelBadgeVariant(entry.level)">
+                    {{ levelLabel(entry.level) }}
+                  </Badge>
+                  <Badge v-if="entry.sensitive" variant="secondary">
+                    {{ t('logsPage.sensitiveTag') }}
+                  </Badge>
+                </div>
+                <pre class="m-0 whitespace-pre-wrap break-all font-mono text-[12.5px] leading-relaxed text-foreground">{{ entry.message }}</pre>
               </div>
-              <div class="flex items-start gap-1">
-                <NTag :type="levelTagType(entry.level)" size="small">
-                  {{ levelLabel(entry.level) }}
-                </NTag>
-                <NTag v-if="entry.sensitive" type="warning" size="small">
-                  {{ t('logsPage.sensitiveTag') }}
-                </NTag>
-              </div>
-              <pre class="m-0 whitespace-pre-wrap break-all font-mono text-[12.5px] leading-relaxed text-[#c9d1d9]">{{ entry.message }}</pre>
             </div>
-          </div>
-        </NCollapseItem>
-      </NCollapse>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   </main>
 </template>

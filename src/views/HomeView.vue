@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import {
-  NButton,
-  NCard,
-  NPageHeader,
-  NSpace,
-  NTag,
-} from 'naive-ui';
+import { ArrowRightIcon } from '@lucide/vue';
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const router = useRouter();
 const { t } = useI18n();
@@ -44,52 +41,44 @@ const tools = computed(() => [
 
 <template>
   <main class="min-h-full p-6">
-    <NSpace vertical :size="18">
-      <NPageHeader>
-        <template #title>
-          {{ t('home.title') }}
-        </template>
-        <template #subtitle>
-          Toolkit
-        </template>
-        <template #extra>
-          <NTag type="success" size="small" round>
-            Naive UI
-          </NTag>
-        </template>
-      </NPageHeader>
+    <div class="flex flex-col gap-5">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 class="text-2xl font-semibold tracking-normal text-foreground">
+            {{ t('home.title') }}
+          </h1>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Toolkit
+          </p>
+        </div>
+        <Badge variant="secondary">
+          shadcn-vue
+        </Badge>
+      </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <NCard
+        <Card
           v-for="tool in tools"
           :key="tool.path"
-          embedded
-          hoverable
-          class="tool-card"
+          class="tool-card cursor-pointer transition-colors hover:bg-accent/40"
           @click="router.push(tool.path)"
         >
-          <NSpace vertical :size="12">
-            <div>
-              <h2 class="text-base font-medium text-[#f2f2f2] mb-1">
-                {{ tool.title }}
-              </h2>
-              <p class="text-sm text-[#a8a8a8] leading-6">
-                {{ tool.description }}
-              </p>
-            </div>
-
-            <NButton type="primary" secondary size="small">
+          <CardHeader>
+            <CardTitle class="text-base">
+              {{ tool.title }}
+            </CardTitle>
+            <CardDescription class="leading-6">
+              {{ tool.description }}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="secondary" size="sm">
+              <ArrowRightIcon data-icon="inline-start" />
               Open
-            </NButton>
-          </NSpace>
-        </NCard>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
-    </NSpace>
+    </div>
   </main>
 </template>
-
-<style scoped>
-.tool-card {
-  cursor: pointer;
-}
-</style>

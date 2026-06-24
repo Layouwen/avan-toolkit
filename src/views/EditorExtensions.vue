@@ -7,24 +7,29 @@ import type {
   EditorExtensionWithStatus,
   EditorKind,
 } from '../electron-api.d';
-import {
-  NButton,
-  NCard,
-  NForm,
-  NFormItem,
-  NInput,
-  NModal,
-  NPopconfirm,
-  NSelect,
-  NSpace,
-  NTag,
-  useMessage,
-} from 'naive-ui';
+import type { BadgeVariants } from '@/components/ui/badge';
+import { ClipboardIcon, CopyIcon, DownloadIcon, FolderOpenIcon, Loader2Icon, PencilIcon, PlusIcon, RefreshCwIcon, Trash2Icon, UploadIcon } from '@lucide/vue';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { toast } from 'vue-sonner';
+import ConfirmButton from '@/components/ConfirmButton.vue';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 
 const { t } = useI18n();
-const message = useMessage();
 
 const records = ref<EditorExtensionWithStatus[]>([]);
 const loading = ref(false);
@@ -226,12 +231,12 @@ async function selectVsixDownloadDir() {
     vsixDownloadDir: dir,
   }));
   vsixDownloadDir.value = dir;
-  message.success(t('editorExtensions.vsixDownloadDirSaved'));
+  toast.success(t('editorExtensions.vsixDownloadDirSaved'));
 }
 
 async function saveRecord() {
   if (!form.extensionId?.trim()) {
-    message.warning(t('editorExtensions.extensionIdRequired'));
+    toast.warning(t('editorExtensions.extensionIdRequired'));
     return;
   }
 
@@ -248,23 +253,23 @@ async function saveRecord() {
     resetForm();
     showFormModal.value = false;
     await loadRecords();
-    message.success(t('editorExtensions.saved'));
+    toast.success(t('editorExtensions.saved'));
   }
   catch (error) {
-    message.error(error instanceof Error ? error.message : String(error));
+    toast.error(error instanceof Error ? error.message : String(error));
   }
 }
 
 async function deleteRecord(recordId: string) {
   await window.electronAPI.deleteEditorExtension(recordId);
   await loadRecords();
-  message.success(t('editorExtensions.deleted'));
+  toast.success(t('editorExtensions.deleted'));
 }
 
 async function exportMarkdown(target: EditorKind | 'common') {
   const markdown = await window.electronAPI.exportEditorExtensionsMarkdown(target);
   lastOutput.value = markdown;
-  message.success(t('editorExtensions.copied'));
+  toast.success(t('editorExtensions.copied'));
 }
 
 async function readClipboard() {
@@ -274,26 +279,26 @@ async function readClipboard() {
 async function copyExtensionId(extensionId: string) {
   try {
     await window.electronAPI.copyEditorExtensionId(extensionId);
-    message.success(t('editorExtensions.extensionIdCopied'));
+    toast.success(t('editorExtensions.extensionIdCopied'));
   }
   catch (error) {
-    message.error(error instanceof Error ? error.message : String(error));
+    toast.error(error instanceof Error ? error.message : String(error));
   }
 }
 
 async function importFromMarkdown() {
   if (!importMarkdown.value.trim()) {
-    message.warning(t('editorExtensions.importRequired'));
+    toast.warning(t('editorExtensions.importRequired'));
     return;
   }
 
   try {
     const result = await window.electronAPI.importEditorExtensionsMarkdown(importMarkdown.value, importScope.value);
     await loadRecords();
-    message.success(t('editorExtensions.imported', result));
+    toast.success(t('editorExtensions.imported', { ...result }));
   }
   catch (error) {
-    message.error(error instanceof Error ? error.message : String(error));
+    toast.error(error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -302,34 +307,34 @@ async function initializeFromInstalled(source: EditorExtensionInitializeSource) 
   try {
     const result = await window.electronAPI.initializeEditorExtensions(source);
     await loadRecords();
-    const summary = t('editorExtensions.initialized', result);
+    const summary = t('editorExtensions.initialized', { ...result });
     const failed = result.failedEditors.length > 0
       ? t('editorExtensions.initializeFailedEditors', { editors: result.failedEditors.join(', ') })
       : '';
     lastOutput.value = [summary, failed].filter(Boolean).join('\n');
     if (failed) {
-      message.warning(lastOutput.value);
+      toast.warning(lastOutput.value);
     }
     else {
-      message.success(summary);
+      toast.success(summary);
     }
   }
   catch (error) {
-    message.error(error instanceof Error ? error.message : String(error));
+    toast.error(error instanceof Error ? error.message : String(error));
   }
   finally {
     initializingSource.value = '';
   }
 }
 
-function statusType(value: boolean | null) {
+function statusVariant(value: boolean | null): BadgeVariants['variant'] {
   if (value === true) {
-    return 'success';
+    return 'default';
   }
   if (value === false) {
-    return 'warning';
+    return 'destructive';
   }
-  return 'default';
+  return 'outline';
 }
 
 function statusLabel(value: boolean | null) {
@@ -351,10 +356,10 @@ async function downloadVsix(editor: EditorKind, extensionId: string) {
       path: result.filePath,
       bytes: result.bytes,
     });
-    message.success(lastOutput.value);
+    toast.success(lastOutput.value);
   }
   catch (error) {
-    message.error(error instanceof Error ? error.message : String(error));
+    toast.error(error instanceof Error ? error.message : String(error));
   }
   finally {
     actionKey.value = '';
@@ -372,11 +377,11 @@ async function installDownloadedVsix(editor: EditorKind, extensionId: string) {
     const result = await window.electronAPI.installDownloadedEditorExtensionVsix(editor, extensionId);
     lastOutput.value = result.message;
     if (result.success) {
-      message.success(t('editorExtensions.installDone'));
+      toast.success(t('editorExtensions.installDone'));
       await loadRecords();
     }
     else {
-      message.error(result.message || t('editorExtensions.downloadedVsixMissing'));
+      toast.error(result.message || t('editorExtensions.downloadedVsixMissing'));
     }
   }
   finally {
@@ -391,11 +396,11 @@ async function runCommand(editor: EditorKind, action: 'install' | 'uninstall', e
     const result = await window.electronAPI.runEditorExtensionCommand(editor, action, extensionId);
     lastOutput.value = result.message;
     if (result.success) {
-      message.success(t(`editorExtensions.${action}Done`));
+      toast.success(t(`editorExtensions.${action}Done`));
       await loadRecords();
     }
     else {
-      message.error(result.message);
+      toast.error(result.message);
     }
   }
   finally {
@@ -411,15 +416,51 @@ async function runBulk(editor: EditorKind, action: 'install' | 'uninstall', targ
     const failed = results.filter(result => !result.success);
     lastOutput.value = results.map(result => result.message).join('\n\n');
     if (failed.length > 0) {
-      message.error(t('editorExtensions.bulkFailed', { failed: failed.length, total: results.length }));
+      toast.error(t('editorExtensions.bulkFailed', { failed: failed.length, total: results.length }));
     }
     else {
-      message.success(t('editorExtensions.bulkDone', { total: results.length }));
+      toast.success(t('editorExtensions.bulkDone', { total: results.length }));
     }
     await loadRecords();
   }
   finally {
     actionKey.value = '';
+  }
+}
+
+function updateImportScope(value: unknown) {
+  if (value === 'common' || value === 'vscode' || value === 'cursor') {
+    importScope.value = value;
+  }
+}
+
+function updateFilterScope(value: unknown) {
+  if (value === 'all' || value === 'common' || value === 'vscode' || value === 'cursor') {
+    filterScope.value = value;
+  }
+}
+
+function updateSortField(value: unknown) {
+  if (
+    value === 'extensionId'
+    || value === 'name'
+    || value === 'scope'
+    || value === 'vscodeStatus'
+    || value === 'cursorStatus'
+  ) {
+    sortField.value = value;
+  }
+}
+
+function updateSortDirection(value: unknown) {
+  if (value === 'asc' || value === 'desc') {
+    sortDirection.value = value;
+  }
+}
+
+function updateFormScope(value: unknown) {
+  if (value === 'common' || value === 'vscode' || value === 'cursor') {
+    form.scope = value;
   }
 }
 
@@ -434,418 +475,519 @@ onMounted(() => {
     <div class="flex w-full max-w-none flex-col gap-4">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 class="text-xl font-semibold text-[#e5e7eb]">
+          <h1 class="text-xl font-semibold text-foreground">
             {{ t('editorExtensions.title') }}
           </h1>
-          <p class="mt-1 text-sm text-[#94a3b8]">
+          <p class="mt-1 text-sm text-muted-foreground">
             {{ t('editorExtensions.subtitle') }}
           </p>
         </div>
-        <NSpace>
-          <NButton type="primary" @click="openCreateModal">
+        <div class="flex flex-wrap gap-2">
+          <Button @click="openCreateModal">
+            <PlusIcon data-icon="inline-start" />
             {{ t('editorExtensions.addTitle') }}
-          </NButton>
-          <NButton secondary :loading="loading" @click="loadRecords()">
+          </Button>
+          <Button variant="secondary" :disabled="loading" @click="loadRecords()">
+            <Loader2Icon v-if="loading" data-icon="inline-start" class="animate-spin" />
+            <RefreshCwIcon v-else data-icon="inline-start" />
             {{ t('editorExtensions.refreshStatus') }}
-          </NButton>
-          <NButton
+          </Button>
+          <Button
             v-for="option in exportOptions"
             :key="option.value"
-            secondary
+            variant="secondary"
             @click="exportMarkdown(option.value as EditorKind | 'common')"
           >
+            <DownloadIcon data-icon="inline-start" />
             {{ option.label }}
-          </NButton>
-        </NSpace>
+          </Button>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 gap-4 xl:grid-cols-[380px_minmax(0,1fr)]">
         <div class="flex flex-col gap-4">
-          <NCard :title="t('editorExtensions.initializeTitle')" embedded>
-            <NSpace vertical>
-              <p class="m-0 text-sm leading-6 text-[#94a3b8]">
+          <Card>
+            <CardHeader>
+              <CardTitle class="text-base">
+                {{ t('editorExtensions.initializeTitle') }}
+              </CardTitle>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-4">
+              <p class="m-0 text-sm leading-6 text-muted-foreground">
                 {{ t('editorExtensions.initializeDescription') }}
               </p>
               <div class="grid grid-cols-1 gap-2">
-                <NButton
+                <Button
                   v-for="option in initializeOptions"
                   :key="option.value"
-                  secondary
-                  block
-                  :loading="initializingSource === option.value"
+                  variant="secondary"
                   :disabled="Boolean(initializingSource)"
                   @click="initializeFromInstalled(option.value as EditorExtensionInitializeSource)"
                 >
+                  <Loader2Icon v-if="initializingSource === option.value" data-icon="inline-start" class="animate-spin" />
+                  <UploadIcon v-else data-icon="inline-start" />
                   {{ option.label }}
-                </NButton>
+                </Button>
               </div>
-            </NSpace>
-          </NCard>
+            </CardContent>
+          </Card>
 
-          <NCard :title="t('editorExtensions.downloadSettingsTitle')" embedded>
-            <NSpace vertical>
-              <p class="m-0 text-sm leading-6 text-[#94a3b8]">
+          <Card>
+            <CardHeader>
+              <CardTitle class="text-base">
+                {{ t('editorExtensions.downloadSettingsTitle') }}
+              </CardTitle>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-4">
+              <p class="m-0 text-sm leading-6 text-muted-foreground">
                 {{ t('editorExtensions.downloadSettingsDescription') }}
               </p>
-              <NInput
+              <Input
                 :value="vsixDownloadDir || t('editorExtensions.systemDownloads')"
                 readonly
                 :placeholder="t('editorExtensions.vsixDownloadDirPlaceholder')"
               />
-              <NSpace justify="end">
-                <NButton secondary @click="selectVsixDownloadDir">
+              <div class="flex justify-end">
+                <Button variant="secondary" @click="selectVsixDownloadDir">
+                  <FolderOpenIcon data-icon="inline-start" />
                   {{ t('editorExtensions.selectVsixDownloadDir') }}
-                </NButton>
-              </NSpace>
-            </NSpace>
-          </NCard>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-          <NCard :title="t('editorExtensions.importTitle')" embedded>
-            <NSpace vertical>
-              <NSelect v-model:value="importScope" :options="scopeOptions" />
-              <NInput
-                v-model:value="importMarkdown"
-                type="textarea"
+          <Card>
+            <CardHeader>
+              <CardTitle class="text-base">
+                {{ t('editorExtensions.importTitle') }}
+              </CardTitle>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-3">
+              <Select :model-value="importScope" @update:model-value="updateImportScope">
+                <SelectTrigger class="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem v-for="option in scopeOptions" :key="option.value" :value="option.value">
+                      {{ option.label }}
+                    </SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <Textarea
+                v-model="importMarkdown"
                 :rows="7"
                 :placeholder="markdownPlaceholder"
               />
-              <NSpace justify="end">
-                <NButton secondary @click="readClipboard">
+              <div class="flex justify-end gap-2">
+                <Button variant="secondary" @click="readClipboard">
+                  <ClipboardIcon data-icon="inline-start" />
                   {{ t('editorExtensions.readClipboard') }}
-                </NButton>
-                <NButton type="primary" @click="importFromMarkdown">
+                </Button>
+                <Button @click="importFromMarkdown">
+                  <UploadIcon data-icon="inline-start" />
                   {{ t('editorExtensions.import') }}
-                </NButton>
-              </NSpace>
-            </NSpace>
-          </NCard>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-          <NCard :title="t('editorExtensions.bulkTitle')" embedded>
-            <div class="grid grid-cols-1 gap-2">
-              <NButton
-                v-for="target in ['common', 'vscode']"
-                :key="`vscode-install-${target}`"
-                secondary
-                block
-                :loading="actionKey === `vscode:install:bulk:${target}`"
-                @click="runBulk('vscode', 'install', target as EditorKind | 'common')"
-              >
-                {{ t('editorExtensions.bulkInstallVscode', { target: t(`editorExtensions.scopes.${target}`) }) }}
-              </NButton>
-              <NButton
-                v-for="target in ['common', 'cursor']"
-                :key="`cursor-install-${target}`"
-                secondary
-                block
-                :loading="actionKey === `cursor:install:bulk:${target}`"
-                @click="runBulk('cursor', 'install', target as EditorKind | 'common')"
-              >
-                {{ t('editorExtensions.bulkInstallCursor', { target: t(`editorExtensions.scopes.${target}`) }) }}
-              </NButton>
-              <NPopconfirm
-                v-for="target in ['common', 'vscode']"
-                :key="`vscode-uninstall-${target}`"
-                @positive-click="runBulk('vscode', 'uninstall', target as EditorKind | 'common')"
-              >
-                <template #trigger>
-                  <NButton
-                    secondary
-                    type="error"
-                    block
-                    :loading="actionKey === `vscode:uninstall:bulk:${target}`"
-                  >
-                    {{ t('editorExtensions.bulkUninstallVscode', { target: t(`editorExtensions.scopes.${target}`) }) }}
-                  </NButton>
-                </template>
-                {{ t('editorExtensions.bulkUninstallConfirm') }}
-              </NPopconfirm>
-              <NPopconfirm
-                v-for="target in ['common', 'cursor']"
-                :key="`cursor-uninstall-${target}`"
-                @positive-click="runBulk('cursor', 'uninstall', target as EditorKind | 'common')"
-              >
-                <template #trigger>
-                  <NButton
-                    secondary
-                    type="error"
-                    block
-                    :loading="actionKey === `cursor:uninstall:bulk:${target}`"
-                  >
-                    {{ t('editorExtensions.bulkUninstallCursor', { target: t(`editorExtensions.scopes.${target}`) }) }}
-                  </NButton>
-                </template>
-                {{ t('editorExtensions.bulkUninstallConfirm') }}
-              </NPopconfirm>
-            </div>
-          </NCard>
+          <Card>
+            <CardHeader>
+              <CardTitle class="text-base">
+                {{ t('editorExtensions.bulkTitle') }}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div class="grid grid-cols-1 gap-2">
+                <Button
+                  v-for="target in ['common', 'vscode']"
+                  :key="`vscode-install-${target}`"
+                  variant="secondary"
+                  :disabled="Boolean(actionKey)"
+                  @click="runBulk('vscode', 'install', target as EditorKind | 'common')"
+                >
+                  <Loader2Icon v-if="actionKey === `vscode:install:bulk:${target}`" data-icon="inline-start" class="animate-spin" />
+                  {{ t('editorExtensions.bulkInstallVscode', { target: t(`editorExtensions.scopes.${target}`) }) }}
+                </Button>
+                <Button
+                  v-for="target in ['common', 'cursor']"
+                  :key="`cursor-install-${target}`"
+                  variant="secondary"
+                  :disabled="Boolean(actionKey)"
+                  @click="runBulk('cursor', 'install', target as EditorKind | 'common')"
+                >
+                  <Loader2Icon v-if="actionKey === `cursor:install:bulk:${target}`" data-icon="inline-start" class="animate-spin" />
+                  {{ t('editorExtensions.bulkInstallCursor', { target: t(`editorExtensions.scopes.${target}`) }) }}
+                </Button>
+                <ConfirmButton
+                  v-for="target in ['common', 'vscode']"
+                  :key="`vscode-uninstall-${target}`"
+                  :title="t('editorExtensions.uninstall')"
+                  :description="t('editorExtensions.bulkUninstallConfirm')"
+                  :confirm-text="t('editorExtensions.uninstall')"
+                  :cancel-text="t('editorExtensions.cancel')"
+                  variant="destructive"
+                  :disabled="Boolean(actionKey)"
+                  @confirm="runBulk('vscode', 'uninstall', target as EditorKind | 'common')"
+                >
+                  <Loader2Icon v-if="actionKey === `vscode:uninstall:bulk:${target}`" data-icon="inline-start" class="animate-spin" />
+                  {{ t('editorExtensions.bulkUninstallVscode', { target: t(`editorExtensions.scopes.${target}`) }) }}
+                </ConfirmButton>
+                <ConfirmButton
+                  v-for="target in ['common', 'cursor']"
+                  :key="`cursor-uninstall-${target}`"
+                  :title="t('editorExtensions.uninstall')"
+                  :description="t('editorExtensions.bulkUninstallConfirm')"
+                  :confirm-text="t('editorExtensions.uninstall')"
+                  :cancel-text="t('editorExtensions.cancel')"
+                  variant="destructive"
+                  :disabled="Boolean(actionKey)"
+                  @confirm="runBulk('cursor', 'uninstall', target as EditorKind | 'common')"
+                >
+                  <Loader2Icon v-if="actionKey === `cursor:uninstall:bulk:${target}`" data-icon="inline-start" class="animate-spin" />
+                  {{ t('editorExtensions.bulkUninstallCursor', { target: t(`editorExtensions.scopes.${target}`) }) }}
+                </ConfirmButton>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <NCard embedded class="min-w-0">
-          <template #header>
+        <Card class="min-w-0">
+          <CardHeader>
             <div class="flex flex-col gap-3">
               <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <span>{{ t('editorExtensions.listTitle') }}</span>
+                <CardTitle class="text-base">
+                  {{ t('editorExtensions.listTitle') }}
+                </CardTitle>
                 <div class="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                  <div class="rounded border border-[#2e3440] bg-[#101827] px-3 py-2">
-                    <div class="text-[#94a3b8]">
+                  <div class="rounded border bg-background px-3 py-2">
+                    <div class="text-muted-foreground">
                       {{ t('editorExtensions.stats.total') }}
                     </div>
-                    <div class="text-base font-semibold text-[#e5e7eb]">
+                    <div class="text-base font-semibold text-foreground">
                       {{ stats.total }}
                     </div>
                   </div>
-                  <div class="rounded border border-[#2e3440] bg-[#101827] px-3 py-2">
-                    <div class="text-[#94a3b8]">
+                  <div class="rounded border bg-background px-3 py-2">
+                    <div class="text-muted-foreground">
                       {{ t('editorExtensions.stats.common') }}
                     </div>
-                    <div class="text-base font-semibold text-[#e5e7eb]">
+                    <div class="text-base font-semibold text-foreground">
                       {{ stats.common }}
                     </div>
                   </div>
-                  <div class="rounded border border-[#2e3440] bg-[#101827] px-3 py-2">
-                    <div class="text-[#94a3b8]">
+                  <div class="rounded border bg-background px-3 py-2">
+                    <div class="text-muted-foreground">
                       {{ t('editorExtensions.stats.vscode') }}
                     </div>
-                    <div class="text-base font-semibold text-[#e5e7eb]">
+                    <div class="text-base font-semibold text-foreground">
                       {{ stats.vscode }}
                     </div>
                   </div>
-                  <div class="rounded border border-[#2e3440] bg-[#101827] px-3 py-2">
-                    <div class="text-[#94a3b8]">
+                  <div class="rounded border bg-background px-3 py-2">
+                    <div class="text-muted-foreground">
                       {{ t('editorExtensions.stats.cursor') }}
                     </div>
-                    <div class="text-base font-semibold text-[#e5e7eb]">
+                    <div class="text-base font-semibold text-foreground">
                       {{ stats.cursor }}
                     </div>
                   </div>
                 </div>
               </div>
               <div class="grid grid-cols-1 gap-2 md:grid-cols-[minmax(220px,1fr)_160px_160px_120px]">
-                <NInput
-                  v-model:value="keyword"
-                  clearable
+                <Input
+                  v-model="keyword"
                   :placeholder="t('editorExtensions.searchPlaceholder')"
                 />
-                <NSelect v-model:value="filterScope" :options="filterScopeOptions" />
-                <NSelect v-model:value="sortField" :options="sortFieldOptions" />
-                <NSelect v-model:value="sortDirection" :options="sortDirectionOptions" />
+                <Select :model-value="filterScope" @update:model-value="updateFilterScope">
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem v-for="option in filterScopeOptions" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <Select :model-value="sortField" @update:model-value="updateSortField">
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem v-for="option in sortFieldOptions" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <Select :model-value="sortDirection" @update:model-value="updateSortDirection">
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem v-for="option in sortDirectionOptions" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </div>
-              <div class="text-xs text-[#94a3b8]">
+              <div class="text-xs text-muted-foreground">
                 {{ t('editorExtensions.filteredCount', { count: filteredRecords.length }) }}
               </div>
             </div>
-          </template>
+          </CardHeader>
 
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-[1120px] table-fixed border-collapse text-sm">
-              <thead>
-                <tr class="border-b border-[#2e3440] text-left text-[#94a3b8]">
-                  <th class="w-[5%] whitespace-nowrap px-3 py-2">
-                    {{ t('editorExtensions.index') }}
-                  </th>
-                  <th class="w-[17%] whitespace-nowrap px-3 py-2">
-                    {{ t('editorExtensions.extensionId') }}
-                  </th>
-                  <th class="w-[16%] whitespace-nowrap px-3 py-2">
-                    {{ t('editorExtensions.extensionName') }}
-                  </th>
-                  <th class="w-[17%] whitespace-nowrap px-3 py-2">
-                    {{ t('editorExtensions.note') }}
-                  </th>
-                  <th class="w-[8%] whitespace-nowrap px-3 py-2">
-                    {{ t('editorExtensions.scope') }}
-                  </th>
-                  <th class="w-[14%] whitespace-nowrap px-3 py-2">
-                    VS Code
-                  </th>
-                  <th class="w-[14%] whitespace-nowrap px-3 py-2">
-                    Cursor
-                  </th>
-                  <th class="w-[11%] whitespace-nowrap px-3 py-2">
-                    {{ t('editorExtensions.actions') }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="filteredRecords.length === 0">
-                  <td colspan="8" class="px-3 py-10 text-center text-[#94a3b8]">
-                    {{ t('editorExtensions.empty') }}
-                  </td>
-                </tr>
-                <tr
-                  v-for="(record, index) in filteredRecords"
-                  :key="record.id"
-                  class="border-b border-[#202733] align-top"
-                >
-                  <td class="px-3 py-3 text-[#94a3b8]">
-                    {{ index + 1 }}
-                  </td>
-                  <td class="px-3 py-3">
-                    <button
-                      class="cursor-pointer break-all text-left font-mono text-[#d7dde8] transition hover:text-[#63e2b7]"
-                      type="button"
-                      @click="copyExtensionId(record.extensionId)"
-                    >
-                      {{ record.extensionId }}
-                    </button>
-                  </td>
-                  <td class="break-words px-3 py-3 text-[#e5e7eb]">
-                    {{ record.name }}
-                  </td>
-                  <td class="break-words px-3 py-3 text-[#cbd5e1]">
-                    {{ record.note }}
-                  </td>
-                  <td class="px-3 py-3">
-                    <NTag size="small" type="info">
-                      {{ t(`editorExtensions.scopes.${record.scope}`) }}
-                    </NTag>
-                  </td>
-                  <td class="px-3 py-3">
-                    <NSpace vertical :size="8">
-                      <div v-if="record.vscodeName" class="break-words text-xs text-[#cbd5e1]">
-                        {{ record.vscodeName }}
+          <CardContent>
+            <div class="overflow-x-auto">
+              <Table class="min-w-[1120px] table-fixed">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead class="w-[5%]">
+                      {{ t('editorExtensions.index') }}
+                    </TableHead>
+                    <TableHead class="w-[17%]">
+                      {{ t('editorExtensions.extensionId') }}
+                    </TableHead>
+                    <TableHead class="w-[16%]">
+                      {{ t('editorExtensions.extensionName') }}
+                    </TableHead>
+                    <TableHead class="w-[17%]">
+                      {{ t('editorExtensions.note') }}
+                    </TableHead>
+                    <TableHead class="w-[8%]">
+                      {{ t('editorExtensions.scope') }}
+                    </TableHead>
+                    <TableHead class="w-[14%]">
+                      VS Code
+                    </TableHead>
+                    <TableHead class="w-[14%]">
+                      Cursor
+                    </TableHead>
+                    <TableHead class="w-[11%]">
+                      {{ t('editorExtensions.actions') }}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow v-if="filteredRecords.length === 0">
+                    <TableCell colspan="8" class="py-10 text-center text-muted-foreground">
+                      {{ t('editorExtensions.empty') }}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow
+                    v-for="(record, index) in filteredRecords"
+                    :key="record.id"
+                  >
+                    <TableCell class="align-top text-muted-foreground">
+                      {{ index + 1 }}
+                    </TableCell>
+                    <TableCell class="align-top">
+                      <button
+                        class="cursor-pointer break-all text-left font-mono text-foreground transition hover:text-primary"
+                        type="button"
+                        @click="copyExtensionId(record.extensionId)"
+                      >
+                        <CopyIcon class="mr-1 inline size-3" />
+                        {{ record.extensionId }}
+                      </button>
+                    </TableCell>
+                    <TableCell class="break-words align-top text-foreground">
+                      {{ record.name }}
+                    </TableCell>
+                    <TableCell class="break-words align-top text-muted-foreground">
+                      {{ record.note }}
+                    </TableCell>
+                    <TableCell class="align-top">
+                      <Badge variant="secondary">
+                        {{ t(`editorExtensions.scopes.${record.scope}`) }}
+                      </Badge>
+                    </TableCell>
+                    <TableCell class="align-top">
+                      <div class="flex flex-col gap-2">
+                        <div v-if="record.vscodeName" class="break-words text-xs text-muted-foreground">
+                          {{ record.vscodeName }}
+                        </div>
+                        <Badge :variant="statusVariant(record.status.vscode)">
+                          {{ statusLabel(record.status.vscode) }}
+                        </Badge>
+                        <div class="flex flex-wrap gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            :disabled="Boolean(actionKey)"
+                            @click="runCommand('vscode', 'install', record.extensionId)"
+                          >
+                            <Loader2Icon v-if="actionKey === `vscode:install:${record.extensionId}`" data-icon="inline-start" class="animate-spin" />
+                            {{ t('editorExtensions.install') }}
+                          </Button>
+                          <Button
+                            v-if="canInstallDownloadedVsix(record, 'vscode')"
+                            size="sm"
+                            :disabled="Boolean(actionKey)"
+                            @click="installDownloadedVsix('vscode', record.extensionId)"
+                          >
+                            <Loader2Icon v-if="actionKey === `vscode:installDownloadedVsix:${record.extensionId}`" data-icon="inline-start" class="animate-spin" />
+                            {{ t('editorExtensions.installDownloadedVsix') }}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            :disabled="Boolean(actionKey)"
+                            @click="downloadVsix('vscode', record.extensionId)"
+                          >
+                            <Loader2Icon v-if="actionKey === `vscode:downloadVsix:${record.extensionId}`" data-icon="inline-start" class="animate-spin" />
+                            {{ t('editorExtensions.downloadVsix') }}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            :disabled="Boolean(actionKey)"
+                            @click="runCommand('vscode', 'uninstall', record.extensionId)"
+                          >
+                            <Loader2Icon v-if="actionKey === `vscode:uninstall:${record.extensionId}`" data-icon="inline-start" class="animate-spin" />
+                            {{ t('editorExtensions.uninstall') }}
+                          </Button>
+                        </div>
                       </div>
-                      <NTag size="small" :type="statusType(record.status.vscode)">
-                        {{ statusLabel(record.status.vscode) }}
-                      </NTag>
-                      <NSpace :size="6">
-                        <NButton
-                          size="tiny"
-                          secondary
-                          :loading="actionKey === `vscode:install:${record.extensionId}`"
-                          @click="runCommand('vscode', 'install', record.extensionId)"
-                        >
-                          {{ t('editorExtensions.install') }}
-                        </NButton>
-                        <NButton
-                          v-if="canInstallDownloadedVsix(record, 'vscode')"
-                          size="tiny"
-                          secondary
-                          type="primary"
-                          :loading="actionKey === `vscode:installDownloadedVsix:${record.extensionId}`"
-                          @click="installDownloadedVsix('vscode', record.extensionId)"
-                        >
-                          {{ t('editorExtensions.installDownloadedVsix') }}
-                        </NButton>
-                        <NButton
-                          size="tiny"
-                          secondary
-                          :loading="actionKey === `vscode:downloadVsix:${record.extensionId}`"
-                          @click="downloadVsix('vscode', record.extensionId)"
-                        >
-                          {{ t('editorExtensions.downloadVsix') }}
-                        </NButton>
-                        <NButton
-                          size="tiny"
-                          secondary
-                          type="error"
-                          :loading="actionKey === `vscode:uninstall:${record.extensionId}`"
-                          @click="runCommand('vscode', 'uninstall', record.extensionId)"
-                        >
-                          {{ t('editorExtensions.uninstall') }}
-                        </NButton>
-                      </NSpace>
-                    </NSpace>
-                  </td>
-                  <td class="px-3 py-3">
-                    <NSpace vertical :size="8">
-                      <div v-if="record.cursorName" class="break-words text-xs text-[#cbd5e1]">
-                        {{ record.cursorName }}
+                    </TableCell>
+                    <TableCell class="align-top">
+                      <div class="flex flex-col gap-2">
+                        <div v-if="record.cursorName" class="break-words text-xs text-muted-foreground">
+                          {{ record.cursorName }}
+                        </div>
+                        <Badge :variant="statusVariant(record.status.cursor)">
+                          {{ statusLabel(record.status.cursor) }}
+                        </Badge>
+                        <div class="flex flex-wrap gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            :disabled="Boolean(actionKey)"
+                            @click="runCommand('cursor', 'install', record.extensionId)"
+                          >
+                            <Loader2Icon v-if="actionKey === `cursor:install:${record.extensionId}`" data-icon="inline-start" class="animate-spin" />
+                            {{ t('editorExtensions.install') }}
+                          </Button>
+                          <Button
+                            v-if="canInstallDownloadedVsix(record, 'cursor')"
+                            size="sm"
+                            :disabled="Boolean(actionKey)"
+                            @click="installDownloadedVsix('cursor', record.extensionId)"
+                          >
+                            <Loader2Icon v-if="actionKey === `cursor:installDownloadedVsix:${record.extensionId}`" data-icon="inline-start" class="animate-spin" />
+                            {{ t('editorExtensions.installDownloadedVsix') }}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            :disabled="Boolean(actionKey)"
+                            @click="downloadVsix('cursor', record.extensionId)"
+                          >
+                            <Loader2Icon v-if="actionKey === `cursor:downloadVsix:${record.extensionId}`" data-icon="inline-start" class="animate-spin" />
+                            {{ t('editorExtensions.downloadVsix') }}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            :disabled="Boolean(actionKey)"
+                            @click="runCommand('cursor', 'uninstall', record.extensionId)"
+                          >
+                            <Loader2Icon v-if="actionKey === `cursor:uninstall:${record.extensionId}`" data-icon="inline-start" class="animate-spin" />
+                            {{ t('editorExtensions.uninstall') }}
+                          </Button>
+                        </div>
                       </div>
-                      <NTag size="small" :type="statusType(record.status.cursor)">
-                        {{ statusLabel(record.status.cursor) }}
-                      </NTag>
-                      <NSpace :size="6">
-                        <NButton
-                          size="tiny"
-                          secondary
-                          :loading="actionKey === `cursor:install:${record.extensionId}`"
-                          @click="runCommand('cursor', 'install', record.extensionId)"
+                    </TableCell>
+                    <TableCell class="align-top">
+                      <div class="flex flex-wrap gap-1.5">
+                        <Button size="sm" variant="secondary" @click="editRecord(record)">
+                          <PencilIcon data-icon="inline-start" />
+                          {{ t('editorExtensions.edit') }}
+                        </Button>
+                        <ConfirmButton
+                          :title="t('editorExtensions.delete')"
+                          :description="t('editorExtensions.deleteConfirm')"
+                          :confirm-text="t('editorExtensions.delete')"
+                          :cancel-text="t('editorExtensions.cancel')"
+                          variant="destructive"
+                          size="sm"
+                          @confirm="deleteRecord(record.id)"
                         >
-                          {{ t('editorExtensions.install') }}
-                        </NButton>
-                        <NButton
-                          v-if="canInstallDownloadedVsix(record, 'cursor')"
-                          size="tiny"
-                          secondary
-                          type="primary"
-                          :loading="actionKey === `cursor:installDownloadedVsix:${record.extensionId}`"
-                          @click="installDownloadedVsix('cursor', record.extensionId)"
-                        >
-                          {{ t('editorExtensions.installDownloadedVsix') }}
-                        </NButton>
-                        <NButton
-                          size="tiny"
-                          secondary
-                          :loading="actionKey === `cursor:downloadVsix:${record.extensionId}`"
-                          @click="downloadVsix('cursor', record.extensionId)"
-                        >
-                          {{ t('editorExtensions.downloadVsix') }}
-                        </NButton>
-                        <NButton
-                          size="tiny"
-                          secondary
-                          type="error"
-                          :loading="actionKey === `cursor:uninstall:${record.extensionId}`"
-                          @click="runCommand('cursor', 'uninstall', record.extensionId)"
-                        >
-                          {{ t('editorExtensions.uninstall') }}
-                        </NButton>
-                      </NSpace>
-                    </NSpace>
-                  </td>
-                  <td class="px-3 py-3">
-                    <NSpace :size="6">
-                      <NButton size="tiny" secondary @click="editRecord(record)">
-                        {{ t('editorExtensions.edit') }}
-                      </NButton>
-                      <NPopconfirm @positive-click="deleteRecord(record.id)">
-                        <template #trigger>
-                          <NButton size="tiny" secondary type="error">
-                            {{ t('editorExtensions.delete') }}
-                          </NButton>
-                        </template>
-                        {{ t('editorExtensions.deleteConfirm') }}
-                      </NPopconfirm>
-                    </NSpace>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </NCard>
+                          <Trash2Icon data-icon="inline-start" />
+                          {{ t('editorExtensions.delete') }}
+                        </ConfirmButton>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <NCard v-if="lastOutput" :title="t('editorExtensions.outputTitle')" embedded>
-        <pre class="max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs text-[#cbd5e1]">{{ lastOutput }}</pre>
-      </NCard>
+      <Card v-if="lastOutput">
+        <CardHeader>
+          <CardTitle class="text-base">
+            {{ t('editorExtensions.outputTitle') }}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <pre class="max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs text-muted-foreground">{{ lastOutput }}</pre>
+        </CardContent>
+      </Card>
 
-      <NModal v-model:show="showFormModal" preset="card" :title="form.id ? t('editorExtensions.editTitle') : t('editorExtensions.addTitle')" class="max-w-[560px]">
-        <NForm label-placement="top">
-          <NFormItem :label="t('editorExtensions.extensionId')">
-            <NInput v-model:value="form.extensionId" placeholder="publisher.extension" />
-          </NFormItem>
-          <NFormItem :label="t('editorExtensions.extensionName')">
-            <NInput v-model:value="form.name" :placeholder="t('editorExtensions.namePlaceholder')" />
-          </NFormItem>
-          <NFormItem :label="t('editorExtensions.note')">
-            <NInput v-model:value="form.note" :placeholder="t('editorExtensions.notePlaceholder')" />
-          </NFormItem>
-          <NFormItem :label="t('editorExtensions.scope')" class="mb-0!">
-            <NSelect v-model:value="form.scope" :options="scopeOptions" />
-          </NFormItem>
-        </NForm>
-        <template #footer>
-          <NSpace justify="end">
-            <NButton secondary @click="showFormModal = false">
+      <Dialog v-model:open="showFormModal">
+        <DialogContent class="max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>{{ form.id ? t('editorExtensions.editTitle') : t('editorExtensions.addTitle') }}</DialogTitle>
+          </DialogHeader>
+          <FieldGroup>
+            <Field>
+              <FieldLabel for="extension-id">
+                {{ t('editorExtensions.extensionId') }}
+              </FieldLabel>
+              <Input id="extension-id" v-model="form.extensionId" placeholder="publisher.extension" />
+            </Field>
+            <Field>
+              <FieldLabel for="extension-name">
+                {{ t('editorExtensions.extensionName') }}
+              </FieldLabel>
+              <Input id="extension-name" v-model="form.name" :placeholder="t('editorExtensions.namePlaceholder')" />
+            </Field>
+            <Field>
+              <FieldLabel for="extension-note">
+                {{ t('editorExtensions.note') }}
+              </FieldLabel>
+              <Input id="extension-note" v-model="form.note" :placeholder="t('editorExtensions.notePlaceholder')" />
+            </Field>
+            <Field>
+              <FieldLabel>{{ t('editorExtensions.scope') }}</FieldLabel>
+              <Select :model-value="form.scope" @update:model-value="updateFormScope">
+                <SelectTrigger class="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem v-for="option in scopeOptions" :key="option.value" :value="option.value">
+                      {{ option.label }}
+                    </SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+          </FieldGroup>
+          <DialogFooter>
+            <Button variant="secondary" @click="showFormModal = false">
               {{ t('editorExtensions.cancel') }}
-            </NButton>
-            <NButton type="primary" @click="saveRecord">
+            </Button>
+            <Button @click="saveRecord">
               {{ t('editorExtensions.save') }}
-            </NButton>
-          </NSpace>
-        </template>
-      </NModal>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   </main>
 </template>

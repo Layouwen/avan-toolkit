@@ -1,24 +1,17 @@
 <script setup lang="ts">
 import type { AppConfig, QzoneAutomationResult, QzoneListItem } from '../electron-api.d';
-import {
-  NAlert,
-  NButton,
-  NCard,
-  NForm,
-  NFormItem,
-  NImage,
-  NImageGroup,
-  NInput,
-  NList,
-  NListItem,
-  NRadio,
-  NRadioGroup,
-  NSpace,
-  NTag,
-  NThing,
-} from 'naive-ui';
+import type { BadgeVariants } from '@/components/ui/badge';
+import { Loader2Icon, SendIcon } from '@lucide/vue';
 import { computed, nextTick, onMounted, ref, toRaw } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const { t } = useI18n();
 
@@ -60,11 +53,11 @@ const listItems = ref<QzoneListItem[]>([]);
 const hasMoreList = ref(false);
 const logContainer = ref<HTMLElement | null>(null);
 
-const statusType = computed(() => {
+const statusVariant = computed<BadgeVariants['variant']>(() => {
   if (!result.value) {
-    return 'default';
+    return 'outline';
   }
-  return result.value.success ? 'success' : 'error';
+  return result.value.success ? 'default' : 'destructive';
 });
 
 function qzoneTextLines(text: string): string[] {
@@ -108,6 +101,17 @@ function plainConfig(): AppConfig {
 
 async function saveConfig() {
   await window.electronAPI.setConfig(plainConfig());
+}
+
+function handleLoginModeUpdate(value: unknown) {
+  if (value === 'qr' || value === 'credentials') {
+    config.value.qzone.loginMode = value;
+    void saveConfig();
+  }
+}
+
+function openFeedImage(image: string) {
+  void window.electronAPI.openExternal(image);
 }
 
 async function loadConfig() {
@@ -232,167 +236,193 @@ onMounted(loadConfig);
 
 <template>
   <main class="qzone-page min-h-full p-6">
-    <NSpace vertical :size="16" class="mx-auto max-w-4xl">
-      <NCard :title="t('qzonePage.title')" embedded>
-        <NSpace vertical :size="16">
-          <NAlert type="warning">
-            {{ t('qzonePage.passwordWarning') }}
-          </NAlert>
+    <div class="mx-auto flex max-w-4xl flex-col gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>{{ t('qzonePage.title') }}</CardTitle>
+        </CardHeader>
+        <CardContent class="flex flex-col gap-4">
+          <Alert>
+            <AlertDescription>
+              {{ t('qzonePage.passwordWarning') }}
+            </AlertDescription>
+          </Alert>
 
-          <NForm label-placement="top">
-            <NFormItem :label="t('qzonePage.loginModeLabel')">
-              <NRadioGroup v-model:value="config.qzone.loginMode" @update:value="saveConfig">
-                <NSpace>
-                  <NRadio value="qr">
-                    {{ t('qzonePage.loginModeQr') }}
-                  </NRadio>
-                  <NRadio value="credentials">
-                    {{ t('qzonePage.loginModeCredentials') }}
-                  </NRadio>
-                </NSpace>
-              </NRadioGroup>
-            </NFormItem>
+          <FieldGroup>
+            <Field>
+              <FieldLabel>{{ t('qzonePage.loginModeLabel') }}</FieldLabel>
+              <ToggleGroup
+                type="single"
+                :model-value="config.qzone.loginMode"
+                @update:model-value="handleLoginModeUpdate"
+              >
+                <ToggleGroupItem value="qr">
+                  {{ t('qzonePage.loginModeQr') }}
+                </ToggleGroupItem>
+                <ToggleGroupItem value="credentials">
+                  {{ t('qzonePage.loginModeCredentials') }}
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </Field>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <NFormItem :label="t('qzonePage.qqNumberLabel')">
-                <NInput
-                  v-model:value="config.qzone.qqNumber"
+              <Field>
+                <FieldLabel for="qzone-qq-number">
+                  {{ t('qzonePage.qqNumberLabel') }}
+                </FieldLabel>
+                <Input
+                  id="qzone-qq-number"
+                  v-model="config.qzone.qqNumber"
                   :placeholder="t('qzonePage.qqNumberPlaceholder')"
                   @blur="saveConfig"
                 />
-              </NFormItem>
+              </Field>
 
-              <NFormItem :label="t('qzonePage.qqPasswordLabel')">
-                <NInput
-                  v-model:value="config.qzone.qqPassword"
+              <Field>
+                <FieldLabel for="qzone-qq-password">
+                  {{ t('qzonePage.qqPasswordLabel') }}
+                </FieldLabel>
+                <Input
+                  id="qzone-qq-password"
+                  v-model="config.qzone.qqPassword"
                   type="password"
-                  show-password-on="click"
                   :placeholder="t('qzonePage.qqPasswordPlaceholder')"
                   @blur="saveConfig"
                 />
-              </NFormItem>
+              </Field>
             </div>
 
-            <NFormItem :label="t('qzonePage.profileDirLabel')">
-              <NInput
-                v-model:value="config.qzone.playwrightProfileDir"
+            <Field>
+              <FieldLabel for="qzone-profile-dir">
+                {{ t('qzonePage.profileDirLabel') }}
+              </FieldLabel>
+              <Input
+                id="qzone-profile-dir"
+                v-model="config.qzone.playwrightProfileDir"
                 :placeholder="t('qzonePage.profileDirPlaceholder')"
                 @blur="saveConfig"
               />
-            </NFormItem>
+            </Field>
 
-            <NFormItem :label="t('qzonePage.contentLabel')">
-              <NInput
-                v-model:value="content"
-                type="textarea"
+            <Field>
+              <FieldLabel for="qzone-content">
+                {{ t('qzonePage.contentLabel') }}
+              </FieldLabel>
+              <Textarea
+                id="qzone-content"
+                v-model="content"
                 :rows="7"
                 :placeholder="t('qzonePage.contentPlaceholder')"
               />
-            </NFormItem>
-          </NForm>
+            </Field>
+          </FieldGroup>
 
-          <NSpace align="center" justify="space-between">
-            <NSpace align="center">
-              <NButton
-                type="primary"
-                :loading="running"
+          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div class="flex flex-wrap items-center gap-2">
+              <Button
                 :disabled="!content.trim() || running || testingLogin || loadingList || loadingMore"
                 @click="publish"
               >
+                <Loader2Icon v-if="running" data-icon="inline-start" class="animate-spin" />
+                <SendIcon v-else data-icon="inline-start" />
                 {{ running ? t('qzonePage.publishing') : t('qzonePage.publish') }}
-              </NButton>
-              <NButton
-                secondary
-                :loading="testingLogin"
+              </Button>
+              <Button
+                variant="secondary"
                 :disabled="running || testingLogin || loadingList || loadingMore"
                 @click="runTestLogin"
               >
+                <Loader2Icon v-if="testingLogin" data-icon="inline-start" class="animate-spin" />
                 {{ testingLogin ? t('qzonePage.testingLogin') : t('qzonePage.testLogin') }}
-              </NButton>
-              <NButton
-                secondary
-                :loading="loadingList"
+              </Button>
+              <Button
+                variant="secondary"
                 :disabled="running || testingLogin || loadingList || loadingMore"
                 @click="loadList"
               >
+                <Loader2Icon v-if="loadingList" data-icon="inline-start" class="animate-spin" />
                 {{ loadingList ? t('qzonePage.loadingList') : t('qzonePage.loadList') }}
-              </NButton>
-            </NSpace>
+              </Button>
+            </div>
 
-            <NTag :type="statusType" round>
+            <Badge :variant="statusVariant">
               {{ result ? result.message : t('qzonePage.statusIdle') }}
-            </NTag>
-          </NSpace>
-        </NSpace>
-      </NCard>
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
 
-      <NCard :title="t('qzonePage.listTitle')" embedded>
-        <NSpace vertical :size="12">
-          <NList v-if="listItems.length > 0" bordered>
-            <NListItem v-for="item in listItems" :key="item.id">
-              <NThing>
-                <template #description>
-                  {{ item.source }}
-                </template>
-                <div class="text-[#d8dee9] leading-6">
-                  <div
-                    v-for="line in qzoneTextLines(item.text)"
-                    :key="line"
-                    class="break-all"
-                  >
-                    {{ line }}
-                  </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>{{ t('qzonePage.listTitle') }}</CardTitle>
+        </CardHeader>
+        <CardContent class="flex flex-col gap-3">
+          <div v-if="listItems.length > 0" class="overflow-hidden rounded-md border">
+            <article v-for="item in listItems" :key="item.id" class="border-b p-4 last:border-b-0">
+              <div class="mb-3 text-xs text-muted-foreground">
+                {{ item.source }}
+              </div>
+              <div class="leading-6 text-foreground">
+                <div
+                  v-for="line in qzoneTextLines(item.text)"
+                  :key="line"
+                  class="break-all"
+                >
+                  {{ line }}
                 </div>
-                <NImageGroup v-if="item.images.length > 0">
-                  <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    <NImage
-                      v-for="image in item.images"
-                      :key="image"
-                      :src="image"
-                      :preview-src="image"
-                      object-fit="cover"
-                      class="qzone-feed-image"
-                      lazy
-                    />
-                  </div>
-                </NImageGroup>
-              </NThing>
-            </NListItem>
-          </NList>
-          <div v-else class="text-[#94a3b8]">
+              </div>
+              <div v-if="item.images.length > 0" class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <button
+                  v-for="image in item.images"
+                  :key="image"
+                  type="button"
+                  class="qzone-feed-image"
+                  @click="openFeedImage(image)"
+                >
+                  <img :src="image" alt="" loading="lazy">
+                </button>
+              </div>
+            </article>
+          </div>
+          <div v-else class="text-muted-foreground">
             {{ t('qzonePage.listEmpty') }}
           </div>
-          <NSpace v-if="listItems.length > 0" justify="center">
-            <NButton
-              secondary
-              :loading="loadingMore"
+          <div v-if="listItems.length > 0" class="flex justify-center">
+            <Button
+              variant="secondary"
               :disabled="loadingMore || loadingList || running || testingLogin || !hasMoreList"
               @click="loadMoreList"
             >
+              <Loader2Icon v-if="loadingMore" data-icon="inline-start" class="animate-spin" />
               {{ loadingMore ? t('qzonePage.loadingMore') : (hasMoreList ? t('qzonePage.loadMore') : t('qzonePage.noMore')) }}
-            </NButton>
-          </NSpace>
-        </NSpace>
-      </NCard>
-
-      <NCard :title="t('qzonePage.logsTitle')" embedded>
-        <div
-          ref="logContainer"
-          class="h-[320px] overflow-y-auto rounded-md border border-[#2e3440] bg-[#141414] p-3 font-mono text-[12.5px] leading-relaxed"
-        >
-          <NThing
-            v-for="step in result?.steps || []"
-            :key="step"
-            class="text-[#c9d1d9] whitespace-pre-wrap break-all"
-          >
-            {{ step }}
-          </NThing>
-          <div v-if="!result || result.steps.length === 0" class="text-[#555] italic text-center mt-5">
-            {{ t('qzonePage.logsEmpty') }}
+            </Button>
           </div>
-        </div>
-      </NCard>
-    </NSpace>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{{ t('qzonePage.logsTitle') }}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div
+            ref="logContainer"
+            class="h-[320px] overflow-y-auto rounded-md border bg-background p-3 font-mono text-[12.5px] leading-relaxed"
+          >
+            <div
+              v-for="step in result?.steps || []"
+              :key="step"
+              class="whitespace-pre-wrap break-all text-foreground"
+            >
+              {{ step }}
+            </div>
+            <div v-if="!result || result.steps.length === 0" class="mt-5 text-center text-muted-foreground italic">
+              {{ t('qzonePage.logsEmpty') }}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   </main>
 </template>
 
@@ -410,9 +440,12 @@ onMounted(loadConfig);
   overflow: hidden;
   border-radius: 4px;
   cursor: zoom-in;
+  border: 0;
+  padding: 0;
+  background: transparent;
 }
 
-.qzone-feed-image :deep(img) {
+.qzone-feed-image img {
   height: 128px;
   width: 100%;
   object-fit: cover;
