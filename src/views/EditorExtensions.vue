@@ -1,17 +1,8 @@
 <script setup lang="ts">
-import type {
-  AppConfig,
-  EditorExtensionInitializeSource,
-  EditorExtensionRecord,
-  EditorExtensionScope,
-  EditorExtensionWithStatus,
-  EditorKind,
-} from '../electron-api.d';
-import type { BadgeVariants } from '@/components/ui/badge';
+import type { EditorExtensionInitializeSource, EditorKind } from '../electron-api.d';
 import { ClipboardIcon, CopyIcon, DownloadIcon, FolderOpenIcon, Loader2Icon, PencilIcon, PlusIcon, RefreshCwIcon, Trash2Icon, UploadIcon } from '@lucide/vue';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { toast } from 'vue-sonner';
 import ConfirmButton from '@/components/ConfirmButton.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,441 +19,58 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { useEditorExtensions } from '@/features/editor-extensions/composables/useEditorExtensions';
 
 const { t } = useI18n();
 
-const records = ref<EditorExtensionWithStatus[]>([]);
-const loading = ref(false);
-const actionKey = ref('');
-const initializingSource = ref<EditorExtensionInitializeSource | ''>('');
-const showFormModal = ref(false);
-const filterScope = ref<EditorExtensionScope | 'all'>('all');
-const keyword = ref('');
-const sortField = ref<'extensionId' | 'name' | 'scope' | 'vscodeStatus' | 'cursorStatus'>('name');
-const sortDirection = ref<'asc' | 'desc'>('asc');
-const importMarkdown = ref('');
-const importScope = ref<EditorExtensionScope>('common');
-const vsixDownloadDir = ref('');
-const lastOutput = ref('');
-const markdownPlaceholder = [
-  '|序号|插件 id|插件名|插件备注|',
-  '|----|----|----|----|',
-  '|1|publisher.extension|插件名|备注|',
-].join('\n');
-
-const form = reactive<Partial<EditorExtensionRecord>>({
-  id: '',
-  extensionId: '',
-  name: '',
-  vscodeName: '',
-  cursorName: '',
-  note: '',
-  scope: 'common',
-});
-
-const scopeOptions = computed(() => [
-  { label: t('editorExtensions.scopes.common'), value: 'common' },
-  { label: t('editorExtensions.scopes.vscode'), value: 'vscode' },
-  { label: t('editorExtensions.scopes.cursor'), value: 'cursor' },
-]);
-
-const filterScopeOptions = computed(() => [
-  { label: t('editorExtensions.scopes.all'), value: 'all' },
-  ...scopeOptions.value,
-]);
-
-const sortFieldOptions = computed(() => [
-  { label: t('editorExtensions.sortFields.extensionId'), value: 'extensionId' },
-  { label: t('editorExtensions.sortFields.name'), value: 'name' },
-  { label: t('editorExtensions.sortFields.scope'), value: 'scope' },
-  { label: t('editorExtensions.sortFields.vscodeStatus'), value: 'vscodeStatus' },
-  { label: t('editorExtensions.sortFields.cursorStatus'), value: 'cursorStatus' },
-]);
-
-const sortDirectionOptions = computed(() => [
-  { label: t('editorExtensions.sortDirections.desc'), value: 'desc' },
-  { label: t('editorExtensions.sortDirections.asc'), value: 'asc' },
-]);
-
-const exportOptions = computed(() => [
-  { label: t('editorExtensions.exportCommon'), value: 'common' },
-  { label: t('editorExtensions.exportVscode'), value: 'vscode' },
-  { label: t('editorExtensions.exportCursor'), value: 'cursor' },
-]);
-
-const initializeOptions = computed(() => [
-  { label: t('editorExtensions.initializeVscode'), value: 'vscode' },
-  { label: t('editorExtensions.initializeCursor'), value: 'cursor' },
-  { label: t('editorExtensions.initializeBoth'), value: 'both' },
-]);
-
-const stats = computed(() => ({
-  total: records.value.length,
-  common: records.value.filter(record => record.scope === 'common').length,
-  vscode: records.value.filter(record => record.scope === 'vscode').length,
-  cursor: records.value.filter(record => record.scope === 'cursor').length,
-}));
-
-const filteredRecords = computed(() => {
-  const keywordText = keyword.value.trim().toLowerCase();
-  const filtered = records.value.filter((record) => {
-    if (filterScope.value !== 'all' && record.scope !== filterScope.value) {
-      return false;
-    }
-    if (!keywordText) {
-      return true;
-    }
-    return [
-      record.extensionId,
-      record.name,
-      record.vscodeName,
-      record.cursorName,
-      record.note,
-    ].some(value => value.toLowerCase().includes(keywordText));
-  });
-
-  return [...filtered].sort((a, b) => {
-    const primary = compareRecords(a, b, sortField.value);
-    const fallback = compareText(a.name, b.name) || compareText(a.extensionId, b.extensionId);
-    const result = primary || fallback;
-    return sortDirection.value === 'desc' ? -result : result;
-  });
-});
-
-function compareText(a: string, b: string) {
-  return a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
-}
-
-function statusRank(value: boolean | null) {
-  if (value === true) {
-    return 2;
-  }
-  if (value === false) {
-    return 1;
-  }
-  return 0;
-}
-
-function compareRecords(
-  a: EditorExtensionWithStatus,
-  b: EditorExtensionWithStatus,
-  field: typeof sortField.value,
-) {
-  if (field === 'name') {
-    return compareText(a.name, b.name);
-  }
-  if (field === 'scope') {
-    return compareText(a.scope, b.scope);
-  }
-  if (field === 'vscodeStatus') {
-    return statusRank(a.status.vscode) - statusRank(b.status.vscode);
-  }
-  if (field === 'cursorStatus') {
-    return statusRank(a.status.cursor) - statusRank(b.status.cursor);
-  }
-  return compareText(a.extensionId, b.extensionId);
-}
-
-function resetForm() {
-  form.id = '';
-  form.extensionId = '';
-  form.name = '';
-  form.vscodeName = '';
-  form.cursorName = '';
-  form.note = '';
-  form.scope = 'common';
-}
-
-function openCreateModal() {
-  resetForm();
-  showFormModal.value = true;
-}
-
-function editRecord(record: EditorExtensionRecord) {
-  form.id = record.id;
-  form.extensionId = record.extensionId;
-  form.name = record.name;
-  form.vscodeName = record.vscodeName;
-  form.cursorName = record.cursorName;
-  form.note = record.note;
-  form.scope = record.scope;
-  showFormModal.value = true;
-}
-
-async function loadRecords(withStatus = true) {
-  loading.value = true;
-  try {
-    records.value = withStatus
-      ? await window.electronAPI.listEditorExtensionsWithStatus()
-      : (await window.electronAPI.listEditorExtensions()).map(record => ({
-          ...record,
-          status: { vscode: null, cursor: null },
-          localVsix: { exists: false, filePath: '', bytes: 0 },
-        }));
-  }
-  finally {
-    loading.value = false;
-  }
-}
-
-async function loadEditorExtensionConfig() {
-  const config = await window.electronAPI.getConfig();
-  vsixDownloadDir.value = config.editorExtensions.vsixDownloadDir;
-}
-
-function withEditorExtensionConfig(config: AppConfig, nextConfig: AppConfig['editorExtensions']): AppConfig {
-  return {
-    ...config,
-    editorExtensions: {
-      ...config.editorExtensions,
-      ...nextConfig,
-    },
-  };
-}
-
-async function selectVsixDownloadDir() {
-  const dir = await window.electronAPI.selectDirectory();
-  if (!dir) {
-    return;
-  }
-
-  const config = await window.electronAPI.getConfig();
-  await window.electronAPI.setConfig(withEditorExtensionConfig(config, {
-    vsixDownloadDir: dir,
-  }));
-  vsixDownloadDir.value = dir;
-  toast.success(t('editorExtensions.vsixDownloadDirSaved'));
-}
-
-async function saveRecord() {
-  if (!form.extensionId?.trim()) {
-    toast.warning(t('editorExtensions.extensionIdRequired'));
-    return;
-  }
-
-  try {
-    await window.electronAPI.saveEditorExtension({
-      id: form.id || undefined,
-      extensionId: form.extensionId,
-      name: form.name,
-      vscodeName: form.vscodeName,
-      cursorName: form.cursorName,
-      note: form.note,
-      scope: form.scope,
-    });
-    resetForm();
-    showFormModal.value = false;
-    await loadRecords();
-    toast.success(t('editorExtensions.saved'));
-  }
-  catch (error) {
-    toast.error(error instanceof Error ? error.message : String(error));
-  }
-}
-
-async function deleteRecord(recordId: string) {
-  await window.electronAPI.deleteEditorExtension(recordId);
-  await loadRecords();
-  toast.success(t('editorExtensions.deleted'));
-}
-
-async function exportMarkdown(target: EditorKind | 'common') {
-  const markdown = await window.electronAPI.exportEditorExtensionsMarkdown(target);
-  lastOutput.value = markdown;
-  toast.success(t('editorExtensions.copied'));
-}
-
-async function readClipboard() {
-  importMarkdown.value = await window.electronAPI.readClipboardText();
-}
-
-async function copyExtensionId(extensionId: string) {
-  try {
-    await window.electronAPI.copyEditorExtensionId(extensionId);
-    toast.success(t('editorExtensions.extensionIdCopied'));
-  }
-  catch (error) {
-    toast.error(error instanceof Error ? error.message : String(error));
-  }
-}
-
-async function importFromMarkdown() {
-  if (!importMarkdown.value.trim()) {
-    toast.warning(t('editorExtensions.importRequired'));
-    return;
-  }
-
-  try {
-    const result = await window.electronAPI.importEditorExtensionsMarkdown(importMarkdown.value, importScope.value);
-    await loadRecords();
-    toast.success(t('editorExtensions.imported', { ...result }));
-  }
-  catch (error) {
-    toast.error(error instanceof Error ? error.message : String(error));
-  }
-}
-
-async function initializeFromInstalled(source: EditorExtensionInitializeSource) {
-  initializingSource.value = source;
-  try {
-    const result = await window.electronAPI.initializeEditorExtensions(source);
-    await loadRecords();
-    const summary = t('editorExtensions.initialized', { ...result });
-    const failed = result.failedEditors.length > 0
-      ? t('editorExtensions.initializeFailedEditors', { editors: result.failedEditors.join(', ') })
-      : '';
-    lastOutput.value = [summary, failed].filter(Boolean).join('\n');
-    if (failed) {
-      toast.warning(lastOutput.value);
-    }
-    else {
-      toast.success(summary);
-    }
-  }
-  catch (error) {
-    toast.error(error instanceof Error ? error.message : String(error));
-  }
-  finally {
-    initializingSource.value = '';
-  }
-}
-
-function statusVariant(value: boolean | null): BadgeVariants['variant'] {
-  if (value === true) {
-    return 'default';
-  }
-  if (value === false) {
-    return 'destructive';
-  }
-  return 'outline';
-}
-
-function statusLabel(value: boolean | null) {
-  if (value === true) {
-    return t('editorExtensions.installed');
-  }
-  if (value === false) {
-    return t('editorExtensions.notInstalled');
-  }
-  return t('editorExtensions.unknown');
-}
-
-async function downloadVsix(editor: EditorKind, extensionId: string) {
-  const key = `${editor}:downloadVsix:${extensionId}`;
-  actionKey.value = key;
-  try {
-    const result = await window.electronAPI.downloadEditorExtensionVsix(extensionId);
-    lastOutput.value = t('editorExtensions.vsixDownloaded', {
-      path: result.filePath,
-      bytes: result.bytes,
-    });
-    toast.success(lastOutput.value);
-  }
-  catch (error) {
-    toast.error(error instanceof Error ? error.message : String(error));
-  }
-  finally {
-    actionKey.value = '';
-  }
-}
-
-function canInstallDownloadedVsix(record: EditorExtensionWithStatus, editor: EditorKind) {
-  return record.localVsix.exists && record.status[editor] === false;
-}
-
-async function installDownloadedVsix(editor: EditorKind, extensionId: string) {
-  const key = `${editor}:installDownloadedVsix:${extensionId}`;
-  actionKey.value = key;
-  try {
-    const result = await window.electronAPI.installDownloadedEditorExtensionVsix(editor, extensionId);
-    lastOutput.value = result.message;
-    if (result.success) {
-      toast.success(t('editorExtensions.installDone'));
-      await loadRecords();
-    }
-    else {
-      toast.error(result.message || t('editorExtensions.downloadedVsixMissing'));
-    }
-  }
-  finally {
-    actionKey.value = '';
-  }
-}
-
-async function runCommand(editor: EditorKind, action: 'install' | 'uninstall', extensionId: string) {
-  const key = `${editor}:${action}:${extensionId}`;
-  actionKey.value = key;
-  try {
-    const result = await window.electronAPI.runEditorExtensionCommand(editor, action, extensionId);
-    lastOutput.value = result.message;
-    if (result.success) {
-      toast.success(t(`editorExtensions.${action}Done`));
-      await loadRecords();
-    }
-    else {
-      toast.error(result.message);
-    }
-  }
-  finally {
-    actionKey.value = '';
-  }
-}
-
-async function runBulk(editor: EditorKind, action: 'install' | 'uninstall', target: EditorKind | 'common') {
-  const key = `${editor}:${action}:bulk:${target}`;
-  actionKey.value = key;
-  try {
-    const results = await window.electronAPI.runEditorExtensionBulkCommand(editor, action, target);
-    const failed = results.filter(result => !result.success);
-    lastOutput.value = results.map(result => result.message).join('\n\n');
-    if (failed.length > 0) {
-      toast.error(t('editorExtensions.bulkFailed', { failed: failed.length, total: results.length }));
-    }
-    else {
-      toast.success(t('editorExtensions.bulkDone', { total: results.length }));
-    }
-    await loadRecords();
-  }
-  finally {
-    actionKey.value = '';
-  }
-}
-
-function updateImportScope(value: unknown) {
-  if (value === 'common' || value === 'vscode' || value === 'cursor') {
-    importScope.value = value;
-  }
-}
-
-function updateFilterScope(value: unknown) {
-  if (value === 'all' || value === 'common' || value === 'vscode' || value === 'cursor') {
-    filterScope.value = value;
-  }
-}
-
-function updateSortField(value: unknown) {
-  if (
-    value === 'extensionId'
-    || value === 'name'
-    || value === 'scope'
-    || value === 'vscodeStatus'
-    || value === 'cursorStatus'
-  ) {
-    sortField.value = value;
-  }
-}
-
-function updateSortDirection(value: unknown) {
-  if (value === 'asc' || value === 'desc') {
-    sortDirection.value = value;
-  }
-}
-
-function updateFormScope(value: unknown) {
-  if (value === 'common' || value === 'vscode' || value === 'cursor') {
-    form.scope = value;
-  }
-}
+const {
+  loading,
+  actionKey,
+  initializingSource,
+  showFormModal,
+  filterScope,
+  keyword,
+  sortField,
+  sortDirection,
+  importMarkdown,
+  importScope,
+  vsixDownloadDir,
+  lastOutput,
+  markdownPlaceholder,
+  form,
+  scopeOptions,
+  filterScopeOptions,
+  sortFieldOptions,
+  sortDirectionOptions,
+  exportOptions,
+  initializeOptions,
+  stats,
+  filteredRecords,
+  openCreateModal,
+  editRecord,
+  loadRecords,
+  loadEditorExtensionConfig,
+  selectVsixDownloadDir,
+  saveRecord,
+  deleteRecord,
+  exportMarkdown,
+  readClipboard,
+  copyExtensionId,
+  importFromMarkdown,
+  initializeFromInstalled,
+  statusVariant,
+  statusLabel,
+  downloadVsix,
+  canInstallDownloadedVsix,
+  installDownloadedVsix,
+  runCommand,
+  runBulk,
+  updateImportScope,
+  updateFilterScope,
+  updateSortField,
+  updateSortDirection,
+  updateFormScope,
+} = useEditorExtensions({ t });
 
 onMounted(() => {
   void loadRecords();
