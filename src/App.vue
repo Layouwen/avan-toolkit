@@ -19,6 +19,7 @@ const menuOptions = computed(() => [
   { label: t('nav.qzone'), key: '/qzone' },
   { label: t('nav.agent'), key: '/agent' },
   { label: t('nav.editorExtensions'), key: '/editor-extensions' },
+  { label: t('nav.lifeTools'), key: '/life-tools' },
   { label: t('nav.screensaver'), key: '/screensaver' },
   { label: t('nav.logs'), key: '/logs' },
   { label: t('nav.about'), key: '/about' },

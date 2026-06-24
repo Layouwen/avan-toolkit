@@ -24,6 +24,10 @@ const router = createRouter({
       component: () => import('../views/EditorExtensions.vue'),
     },
     {
+      path: '/life-tools',
+      component: () => import('../views/LifeTools.vue'),
+    },
+    {
       path: '/qzone',
       component: () => import('../views/QzonePublisher.vue'),
     },

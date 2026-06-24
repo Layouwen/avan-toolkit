@@ -32,6 +32,11 @@ const tools = computed(() => [
     path: '/editor-extensions',
   },
   {
+    title: t('home.tools.lifeTools.title'),
+    description: t('home.tools.lifeTools.description'),
+    path: '/life-tools',
+  },
+  {
     title: t('home.tools.screensaver.title'),
     description: t('home.tools.screensaver.description'),
     path: '/screensaver',
