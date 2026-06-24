@@ -89,7 +89,7 @@ const tools = computed(() => [
           <CardContent>
             <Button variant="secondary" size="sm">
               <ArrowRightIcon data-icon="inline-start" />
-              Open
+              {{ t('home.openTool') }}
             </Button>
           </CardContent>
         </Card>

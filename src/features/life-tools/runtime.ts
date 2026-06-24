@@ -1,9 +1,10 @@
 import type { ElectronAPI } from '../../electron-api';
-import type { FocusSession, LifeToolsData } from './types';
+import type { CountdownEvent, FocusSession, LifeToolsData } from './types';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Preferences } from '@capacitor/preferences';
 import { createDefaultLifeToolsData, normalizeLifeToolsData } from './data';
+import { getCountdownOccurrence } from './utils';
 
 export interface LifeToolsPersistence {
   load: () => Promise<LifeToolsData>;
@@ -12,6 +13,8 @@ export interface LifeToolsPersistence {
 
 export interface LifeToolsReminderScheduler {
   requestPermission: () => Promise<boolean>;
+  scheduleCountdownReminder: (event: CountdownEvent, now?: Date) => Promise<void>;
+  cancelCountdownReminder: (eventId: string) => Promise<void>;
   scheduleFocusEnd: (session: FocusSession) => Promise<void>;
   cancelFocusEnd: (sessionId: string) => Promise<void>;
 }
@@ -168,12 +171,12 @@ export function createCapacitorReminderScheduler(
       }
 
       await localNotifications.cancel({
-        notifications: [{ id: getFocusNotificationId(session.id) }],
+        notifications: [{ id: getNotificationId('focus', session.id) }],
       });
       await localNotifications.schedule({
         notifications: [
           {
-            id: getFocusNotificationId(session.id),
+            id: getNotificationId('focus', session.id),
             title: 'Focus session complete',
             body: `${session.presetTitle} is done.`,
             schedule: {
@@ -184,9 +187,38 @@ export function createCapacitorReminderScheduler(
         ],
       });
     },
+    async scheduleCountdownReminder(event, now = new Date()) {
+      await localNotifications.cancel({
+        notifications: [{ id: getNotificationId('countdown', event.id) }],
+      });
+
+      const reminderAt = getCountdownReminderDate(event, now);
+      if (!reminderAt) {
+        return;
+      }
+
+      await localNotifications.schedule({
+        notifications: [
+          {
+            id: getNotificationId('countdown', event.id),
+            title: event.title,
+            body: getCountdownReminderBody(event),
+            schedule: {
+              at: reminderAt,
+              allowWhileIdle: true,
+            },
+          },
+        ],
+      });
+    },
+    async cancelCountdownReminder(eventId) {
+      await localNotifications.cancel({
+        notifications: [{ id: getNotificationId('countdown', eventId) }],
+      });
+    },
     async cancelFocusEnd(sessionId) {
       await localNotifications.cancel({
-        notifications: [{ id: getFocusNotificationId(sessionId) }],
+        notifications: [{ id: getNotificationId('focus', sessionId) }],
       });
     },
   };
@@ -196,6 +228,7 @@ export function createWebNotificationReminderScheduler(
   options: WebNotificationReminderSchedulerOptions = {},
 ): LifeToolsReminderScheduler {
   const timers = new Map<string, TimerHandle>();
+  const countdownTimers = new Map<string, TimerHandle>();
   const Notification = options.Notification ?? getGlobalNotification();
   const setReminderTimeout = options.setTimeout ?? globalThis.setTimeout.bind(globalThis);
   const clearReminderTimeout = options.clearTimeout ?? globalThis.clearTimeout.bind(globalThis);
@@ -211,8 +244,45 @@ export function createWebNotificationReminderScheduler(
     timers.delete(sessionId);
   }
 
+  async function cancelCountdownReminder(eventId: string): Promise<void> {
+    const timer = countdownTimers.get(eventId);
+    if (timer === undefined) {
+      return;
+    }
+
+    clearReminderTimeout(timer);
+    countdownTimers.delete(eventId);
+  }
+
   return {
     requestPermission: () => requestNotificationPermission(Notification),
+    async scheduleCountdownReminder(event, now = new Date(getNow())) {
+      await cancelCountdownReminder(event.id);
+
+      if (!canShowNotification(Notification)) {
+        return;
+      }
+
+      const reminderAt = getCountdownReminderDate(event, now);
+      if (!reminderAt) {
+        return;
+      }
+
+      const delay = reminderAt.getTime() - getNow();
+      if (delay < 0) {
+        return;
+      }
+
+      const timer = setReminderTimeout(() => {
+        countdownTimers.delete(event.id);
+        if (canShowNotification(Notification)) {
+          void showCountdownNotification(Notification, event);
+        }
+      }, delay);
+
+      countdownTimers.set(event.id, timer);
+    },
+    cancelCountdownReminder,
     async scheduleFocusEnd(session) {
       await cancelFocusEnd(session.id);
 
@@ -292,9 +362,50 @@ function showFocusEndNotification(
   });
 }
 
-function getFocusNotificationId(sessionId: string): number {
+function showCountdownNotification(
+  Notification: NotificationConstructorLike,
+  event: CountdownEvent,
+): unknown {
+  return new Notification(event.title, {
+    body: getCountdownReminderBody(event),
+  });
+}
+
+function getCountdownReminderDate(event: CountdownEvent, now: Date): Date | null {
+  if (event.reminderDaysBefore === null || event.reminderDaysBefore === undefined) {
+    return null;
+  }
+
+  try {
+    const occurrenceDate = getCountdownOccurrence(event, now);
+    const reminderAt = getLocalDateAt(occurrenceDate, 9, 0, 0, 0);
+    reminderAt.setDate(reminderAt.getDate() - Math.max(0, Math.round(event.reminderDaysBefore)));
+    return reminderAt.getTime() >= now.getTime() ? reminderAt : null;
+  }
+  catch {
+    return null;
+  }
+}
+
+function getLocalDateAt(date: string, hours: number, minutes: number, seconds: number, milliseconds: number): Date {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(year, month - 1, day, hours, minutes, seconds, milliseconds);
+}
+
+function getCountdownReminderBody(event: CountdownEvent): string {
+  const daysBefore = Math.max(0, Math.round(event.reminderDaysBefore ?? 0));
+  if (daysBefore === 0) {
+    return `${event.title} is today.`;
+  }
+  if (daysBefore === 1) {
+    return `${event.title} is tomorrow.`;
+  }
+  return `${event.title} is in ${daysBefore} days.`;
+}
+
+function getNotificationId(namespace: 'countdown' | 'focus', id: string): number {
   let hash = 0;
-  for (const char of sessionId) {
+  for (const char of `${namespace}:${id}`) {
     hash = (Math.imul(31, hash) + char.charCodeAt(0)) | 0;
   }
   return (Math.abs(hash) % 2147483647) || 1;

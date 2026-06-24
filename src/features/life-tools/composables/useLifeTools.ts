@@ -118,6 +118,7 @@ export function useLifeTools(options: UseLifeToolsOptions = {}) {
       data.value = normalizeLifeToolsData(await runtime.persistence.load());
       reconcileSelectedPreset();
       await rescheduleLoadedFocusReminder();
+      await rescheduleLoadedCountdownReminders();
     }
     catch (error) {
       errorMessage.value = getErrorMessage(error);
@@ -128,12 +129,43 @@ export function useLifeTools(options: UseLifeToolsOptions = {}) {
   }
 
   async function saveCountdownEvent(draft: CountdownEventDraft): Promise<void> {
+    const existing = draft.id
+      ? data.value.countdownEvents.find(event => event.id === draft.id)
+      : undefined;
     const nextEvent = buildCountdownEvent(draft);
+    const permissionResult = hasCountdownReminder(nextEvent)
+      ? await captureReminderResult(() => runtime.reminders.requestPermission())
+      : { value: false, error: '' };
+
     await commitData(upsertCountdownEvent(data.value, nextEvent));
+
+    if (hasCountdownReminder(nextEvent) && permissionResult.value) {
+      const scheduleError = await captureReminderError(() => runtime.reminders.scheduleCountdownReminder(nextEvent, now.value));
+      if (scheduleError) {
+        errorMessage.value = scheduleError;
+      }
+      return;
+    }
+
+    if (hasCountdownReminder(nextEvent) && permissionResult.error) {
+      errorMessage.value = permissionResult.error;
+      return;
+    }
+
+    if (existing || !hasCountdownReminder(nextEvent)) {
+      const cancelError = await captureReminderError(() => runtime.reminders.cancelCountdownReminder(nextEvent.id));
+      if (cancelError) {
+        errorMessage.value = cancelError;
+      }
+    }
   }
 
   async function deleteCountdownEvent(eventId: string): Promise<void> {
+    const reminderError = await captureReminderError(() => runtime.reminders.cancelCountdownReminder(eventId));
     await commitData(removeCountdownEvent(data.value, eventId));
+    if (reminderError) {
+      errorMessage.value = reminderError;
+    }
   }
 
   function selectFocusPreset(presetId: string): void {
@@ -265,6 +297,19 @@ export function useLifeTools(options: UseLifeToolsOptions = {}) {
     }
   }
 
+  async function rescheduleLoadedCountdownReminders(): Promise<void> {
+    for (const event of data.value.countdownEvents) {
+      if (!hasCountdownReminder(event)) {
+        continue;
+      }
+
+      const reminderError = await captureReminderError(() => runtime.reminders.scheduleCountdownReminder(event, now.value));
+      if (reminderError) {
+        errorMessage.value = reminderError;
+      }
+    }
+  }
+
   let intervalHandle: ReturnType<typeof globalThis.setInterval> | null = null;
   if (tickMs > 0) {
     intervalHandle = startInterval(refreshNow, tickMs);
@@ -313,6 +358,10 @@ function normalizeReminderDays(value: number | null | undefined): number | null 
     return null;
   }
   return Math.max(0, Math.round(value));
+}
+
+function hasCountdownReminder(event: CountdownEvent): boolean {
+  return event.reminderDaysBefore !== null && event.reminderDaysBefore !== undefined;
 }
 
 function createLocalId(): string {

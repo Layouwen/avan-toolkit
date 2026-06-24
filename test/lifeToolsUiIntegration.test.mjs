@@ -31,6 +31,8 @@ test('Life Tools route, nav, and home entry are wired', () => {
   );
   assert.match(appSource, /t\(['"]nav\.lifeTools['"]\)[\s\S]*?key:\s*['"]\/life-tools['"]/);
   assert.match(homeSource, /t\(['"]home\.tools\.lifeTools\.title['"]\)[\s\S]*?path:\s*['"]\/life-tools['"]/);
+  assert.match(homeSource, /t\(['"]home\.openTool['"]\)/, 'home CTA should be localized');
+  assert.doesNotMatch(homeSource, />\s*Open\s*</, 'home CTA should not hardcode English text');
 });
 
 test('Life Tools i18n keys exist in zh-CN and en locales', () => {

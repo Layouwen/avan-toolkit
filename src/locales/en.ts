@@ -12,6 +12,7 @@ export default {
   },
   home: {
     title: 'Tools',
+    openTool: 'Open',
     tools: {
       blogSync: {
         title: 'Blog Sync',

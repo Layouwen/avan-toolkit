@@ -147,6 +147,12 @@ function createRuntime(initialData) {
           calls.push(['requestPermission']);
           return true;
         },
+        async scheduleCountdownReminder(event) {
+          calls.push(['scheduleCountdownReminder', event.id]);
+        },
+        async cancelCountdownReminder(eventId) {
+          calls.push(['cancelCountdownReminder', eventId]);
+        },
         async scheduleFocusEnd(session) {
           calls.push(['scheduleFocusEnd', session.id]);
         },
@@ -162,7 +168,7 @@ function createRuntimeWithFailingReminders(initialData, failingMethods) {
   const harness = createRuntime(initialData);
   const failing = new Set(failingMethods);
 
-  for (const method of ['requestPermission', 'scheduleFocusEnd', 'cancelFocusEnd']) {
+  for (const method of ['requestPermission', 'scheduleCountdownReminder', 'cancelCountdownReminder', 'scheduleFocusEnd', 'cancelFocusEnd']) {
     const original = harness.runtime.reminders[method];
     harness.runtime.reminders[method] = async (...args) => {
       harness.calls.push([`${method}:attempt`, ...args.map(arg => (typeof arg === 'object' && arg ? arg.id : arg))]);
@@ -230,7 +236,16 @@ test('useLifeTools loads data, derives sorted countdown view models, and persist
   });
   await state.deleteCountdownEvent('later');
 
-  assert.deepEqual(callNames(runtimeHarness), ['load', 'save', 'save', 'save']);
+  assert.deepEqual(callNames(runtimeHarness), [
+    'load',
+    'requestPermission',
+    'save',
+    'scheduleCountdownReminder',
+    'save',
+    'cancelCountdownReminder',
+    'cancelCountdownReminder',
+    'save',
+  ]);
   assert.equal(runtimeHarness.storedData.countdownEvents.some(event => event.id === 'later'), false);
   assert.deepEqual(
     runtimeHarness.storedData.countdownEvents.find(event => event.id === 'event-new'),

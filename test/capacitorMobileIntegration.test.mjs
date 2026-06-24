@@ -36,6 +36,7 @@ test('mobile shell avoids Electron-only navigation and config loading', () => {
   assert.match(home, /isElectronRuntime/);
   assert.match(home, /isElectronRuntime\.value[\s\S]*home\.tools\.blogSync\.title/);
   assert.match(router, /requiresElectron:\s*true/);
+  assert.match(router, /path:\s*['"]\/about['"][\s\S]*?requiresElectron:\s*true/);
   assert.match(router, /beforeEach\(\(to\)/);
   assert.match(router, /route\.meta\.requiresElectron/);
   assert.match(router, /return ['"]\/life-tools['"]/);

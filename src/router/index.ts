@@ -9,6 +9,7 @@ const router = createRouter({
     },
     {
       path: '/about',
+      meta: { requiresElectron: true },
       component: () => import('../views/About.vue'),
     },
     {

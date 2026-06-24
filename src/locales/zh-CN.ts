@@ -12,6 +12,7 @@ export default {
   },
   home: {
     title: '工具导航',
+    openTool: '打开',
     tools: {
       blogSync: {
         title: '博客同步',

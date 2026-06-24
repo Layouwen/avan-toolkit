@@ -99,12 +99,16 @@ function appConfig(overrides = {}) {
 }
 
 function countdownEvent(overrides = {}) {
-  return {
+  const event = {
     id: overrides.id ?? 'event-1',
     title: overrides.title ?? 'Launch',
     date: overrides.date ?? '2026-07-01',
     recurrence: overrides.recurrence ?? 'none',
   };
+  if ('reminderDaysBefore' in overrides) {
+    event.reminderDaysBefore = overrides.reminderDaysBefore;
+  }
+  return event;
 }
 
 function focusPreset(overrides = {}) {
@@ -361,6 +365,49 @@ test('web notification scheduler uses absolute endsAt timers, fires notification
   assert.equal(timers.scheduled.size, 0);
 });
 
+test('web notification scheduler schedules countdown reminders at local 9am and cancels by event id', async () => {
+  const { createWebNotificationReminderScheduler } = loadLifeToolsRuntime();
+  const timers = createTimerHarness();
+  const notification = createNotificationHarness({ permission: 'granted' });
+  const nowMs = new Date(2026, 5, 24, 8, 0, 0, 0).getTime();
+  const scheduler = createWebNotificationReminderScheduler({
+    Notification: notification.Notification,
+    clearTimeout: timers.clearTimeout,
+    now: () => nowMs,
+    setTimeout: timers.setTimeout,
+  });
+
+  await scheduler.scheduleCountdownReminder(countdownEvent({
+    id: 'event-reminder',
+    title: 'Anniversary',
+    date: '2026-06-26',
+    reminderDaysBefore: 1,
+  }), new Date(nowMs));
+
+  assert.equal(timers.scheduled.size, 1);
+  const firstTimer = [...timers.scheduled.entries()][0];
+  assert.equal(firstTimer[1].delay, new Date(2026, 5, 25, 9, 0, 0, 0).getTime() - nowMs);
+
+  firstTimer[1].callback();
+
+  assert.equal(notification.notifications.length, 1);
+  assert.equal(notification.notifications[0].title, 'Anniversary');
+  assert.match(notification.notifications[0].options.body, /tomorrow/);
+
+  await scheduler.scheduleCountdownReminder(countdownEvent({
+    id: 'event-reminder',
+    title: 'Anniversary',
+    date: '2026-06-27',
+    reminderDaysBefore: 2,
+  }), new Date(nowMs));
+  const secondTimer = [...timers.scheduled.entries()][0];
+
+  await scheduler.cancelCountdownReminder('event-reminder');
+
+  assert.deepEqual(timers.cleared, [secondTimer[0]]);
+  assert.equal(timers.scheduled.size, 0);
+});
+
 test('web notification scheduler is a no-op when browser notifications are unavailable or denied', async () => {
   const { createWebNotificationReminderScheduler } = loadLifeToolsRuntime();
   const unavailableTimers = createTimerHarness();
@@ -496,6 +543,44 @@ test('Capacitor reminder scheduler requests permission, schedules at endsAt, and
   assert.equal(calls[3][0], 'cancel');
   assert.equal(calls[1][1].notifications[0].id, calls[2][1].notifications[0].id);
   assert.equal(calls[3][1].notifications[0].id, calls[2][1].notifications[0].id);
+});
+
+test('Capacitor reminder scheduler schedules countdown reminders and cancels by hashed id', async () => {
+  const { createCapacitorReminderScheduler } = loadLifeToolsRuntime();
+  const calls = [];
+  const localNotifications = {
+    async requestPermissions() {
+      calls.push(['requestPermissions']);
+      return { display: 'granted' };
+    },
+    async cancel(options) {
+      calls.push(['cancel', options]);
+    },
+    async schedule(options) {
+      calls.push(['schedule', options]);
+      return {};
+    },
+  };
+  const scheduler = createCapacitorReminderScheduler(localNotifications);
+
+  await scheduler.scheduleCountdownReminder(countdownEvent({
+    id: 'native-event',
+    title: 'Native Anniversary',
+    date: '2026-06-26',
+    recurrence: 'none',
+    reminderDaysBefore: 1,
+  }), new Date(2026, 5, 24, 8, 0, 0, 0));
+  await scheduler.cancelCountdownReminder('native-event');
+
+  assert.equal(calls[0][0], 'cancel');
+  assert.equal(calls[1][0], 'schedule');
+  assert.equal(calls[1][1].notifications[0].title, 'Native Anniversary');
+  assert.match(calls[1][1].notifications[0].body, /tomorrow/);
+  assert.equal(calls[1][1].notifications[0].schedule.at.getTime(), new Date(2026, 5, 25, 9, 0, 0, 0).getTime());
+  assert.equal(calls[1][1].notifications[0].schedule.allowWhileIdle, true);
+  assert.equal(calls[2][0], 'cancel');
+  assert.equal(calls[0][1].notifications[0].id, calls[1][1].notifications[0].id);
+  assert.equal(calls[2][1].notifications[0].id, calls[1][1].notifications[0].id);
 });
 
 test('runtime factory has a Capacitor native branch before localStorage fallback', () => {
