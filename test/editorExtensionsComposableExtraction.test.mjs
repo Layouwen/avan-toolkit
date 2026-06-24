@@ -7,6 +7,8 @@ import { test } from 'node:test';
 const rootDir = new URL('..', import.meta.url).pathname;
 const routePath = join(rootDir, 'src/views/EditorExtensions.vue');
 const routeSource = readFileSync(routePath, 'utf8');
+const listCardSource = readFileSync(join(rootDir, 'src/features/editor-extensions/components/EditorExtensionsListCard.vue'), 'utf8');
+const combinedUiSource = `${routeSource}\n${listCardSource}`;
 const composablePath = join(rootDir, 'src/features/editor-extensions/composables/useEditorExtensions.ts');
 const utilsPath = join(rootDir, 'src/features/editor-extensions/utils.ts');
 
@@ -73,8 +75,8 @@ test('Editor Extensions route keeps i18n mount wiring and template action hooks'
     /void\s+loadEditorExtensionConfig\(\);/,
     'EditorExtensions.vue should load editor extension config inside onMounted',
   );
-  assert.match(routeSource, /downloadVsix\('vscode',\s*record\.extensionId\)/);
-  assert.match(routeSource, /downloadVsix\('cursor',\s*record\.extensionId\)/);
-  assert.match(routeSource, /installDownloadedVsix\('vscode',\s*record\.extensionId\)/);
-  assert.match(routeSource, /installDownloadedVsix\('cursor',\s*record\.extensionId\)/);
+  assert.match(combinedUiSource, /(?:downloadVsix|emit\('downloadVsix'),\s*'vscode',\s*record\.extensionId\)/);
+  assert.match(combinedUiSource, /(?:downloadVsix|emit\('downloadVsix'),\s*'cursor',\s*record\.extensionId\)/);
+  assert.match(combinedUiSource, /(?:installDownloadedVsix|emit\('installDownloadedVsix'),\s*'vscode',\s*record\.extensionId\)/);
+  assert.match(combinedUiSource, /(?:installDownloadedVsix|emit\('installDownloadedVsix'),\s*'cursor',\s*record\.extensionId\)/);
 });
