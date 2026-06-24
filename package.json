@@ -17,6 +17,10 @@
   "main": ".vite/build/main.js",
   "scripts": {
     "dev": "electron-forge start",
+    "mobile:build": "vite build --config vite.mobile.config.mts",
+    "cap:sync": "npm run mobile:build && cap sync",
+    "cap:open:ios": "npm run cap:sync && cap open ios",
+    "cap:open:android": "npm run cap:sync && cap open android",
     "package": "npm run install:playwright && electron-forge package",
     "make": "npm run install:playwright && electron-forge make",
     "publish": "electron-forge publish",
@@ -24,6 +28,11 @@
     "install:playwright": "node scripts/install-playwright-browsers.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/ios": "^8.4.1",
+    "@capacitor/local-notifications": "^8.2.0",
+    "@capacitor/preferences": "^8.0.1",
     "@lucide/vue": "^1.21.0",
     "@tanstack/vue-table": "^8.21.3",
     "@vueuse/core": "^14.3.0",
@@ -46,6 +55,7 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.0.0",
+    "@capacitor/cli": "^8.4.1",
     "@electron-forge/cli": "^7.11.2",
     "@electron-forge/maker-deb": "^7.11.2",
     "@electron-forge/maker-dmg": "^7.11.2",

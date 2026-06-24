@@ -12,17 +12,26 @@ const route = useRoute();
 const router = useRouter();
 
 const isScreensaverWindow = computed(() => route.path === '/screensaver-window');
+const isElectronRuntime = computed(() => typeof window !== 'undefined' && Boolean(window.electronAPI));
 
 const menuOptions = computed(() => [
   { label: t('nav.home'), key: '/' },
-  { label: t('nav.blogSync'), key: '/sync' },
-  { label: t('nav.qzone'), key: '/qzone' },
-  { label: t('nav.agent'), key: '/agent' },
-  { label: t('nav.editorExtensions'), key: '/editor-extensions' },
+  ...(isElectronRuntime.value
+    ? [
+        { label: t('nav.blogSync'), key: '/sync' },
+        { label: t('nav.qzone'), key: '/qzone' },
+        { label: t('nav.agent'), key: '/agent' },
+        { label: t('nav.editorExtensions'), key: '/editor-extensions' },
+      ]
+    : []),
   { label: t('nav.lifeTools'), key: '/life-tools' },
-  { label: t('nav.screensaver'), key: '/screensaver' },
-  { label: t('nav.logs'), key: '/logs' },
-  { label: t('nav.about'), key: '/about' },
+  ...(isElectronRuntime.value
+    ? [
+        { label: t('nav.screensaver'), key: '/screensaver' },
+        { label: t('nav.logs'), key: '/logs' },
+        { label: t('nav.about'), key: '/about' },
+      ]
+    : []),
 ]);
 
 const activeMenuKey = computed(() => route.path);
@@ -34,6 +43,10 @@ function handleNavigate(key: string) {
 }
 
 onMounted(async () => {
+  if (!window.electronAPI) {
+    return;
+  }
+
   const config = await window.electronAPI.getConfig();
   if (config.locale) {
     locale.value = config.locale;

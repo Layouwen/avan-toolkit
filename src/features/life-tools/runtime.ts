@@ -1,5 +1,8 @@
 import type { ElectronAPI } from '../../electron-api';
 import type { FocusSession, LifeToolsData } from './types';
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { Preferences } from '@capacitor/preferences';
 import { createDefaultLifeToolsData, normalizeLifeToolsData } from './data';
 
 export interface LifeToolsPersistence {
@@ -45,6 +48,27 @@ interface WebNotificationReminderSchedulerOptions {
   clearTimeout?: (handle: TimerHandle) => void;
   now?: () => number;
   setTimeout?: (callback: () => void, delay: number) => TimerHandle;
+}
+
+interface PreferencesLike {
+  get: (options: { key: string }) => Promise<{ value: string | null }>;
+  set: (options: { key: string; value: string }) => Promise<void>;
+}
+
+interface LocalNotificationsLike {
+  cancel: (options: { notifications: Array<{ id: number }> }) => Promise<void>;
+  requestPermissions: () => Promise<{ display: string }>;
+  schedule: (options: {
+    notifications: Array<{
+      id: number;
+      title: string;
+      body: string;
+      schedule: {
+        at: Date;
+        allowWhileIdle?: boolean;
+      };
+    }>;
+  }) => Promise<unknown>;
 }
 
 interface LifeToolsRuntimeOptions extends WebNotificationReminderSchedulerOptions {
@@ -102,6 +126,72 @@ export function createLocalStorageLifeToolsPersistence(
   };
 }
 
+export function createCapacitorLifeToolsPersistence(
+  preferences: PreferencesLike = Preferences,
+  key = LIFE_TOOLS_LOCAL_STORAGE_KEY,
+): LifeToolsPersistence {
+  return {
+    async load() {
+      const { value } = await preferences.get({ key });
+      if (!value) {
+        return createDefaultLifeToolsData();
+      }
+
+      try {
+        return normalizeLifeToolsData(JSON.parse(value));
+      }
+      catch {
+        return createDefaultLifeToolsData();
+      }
+    },
+    async save(data) {
+      await preferences.set({
+        key,
+        value: JSON.stringify(normalizeLifeToolsData(data)),
+      });
+    },
+  };
+}
+
+export function createCapacitorReminderScheduler(
+  localNotifications: LocalNotificationsLike = LocalNotifications,
+): LifeToolsReminderScheduler {
+  return {
+    async requestPermission() {
+      const status = await localNotifications.requestPermissions();
+      return status.display === 'granted';
+    },
+    async scheduleFocusEnd(session) {
+      const endsAt = new Date(session.endsAt);
+      if (Number.isNaN(endsAt.getTime())) {
+        return;
+      }
+
+      await localNotifications.cancel({
+        notifications: [{ id: getFocusNotificationId(session.id) }],
+      });
+      await localNotifications.schedule({
+        notifications: [
+          {
+            id: getFocusNotificationId(session.id),
+            title: 'Focus session complete',
+            body: `${session.presetTitle} is done.`,
+            schedule: {
+              at: endsAt,
+              allowWhileIdle: true,
+            },
+          },
+        ],
+      });
+    },
+    async cancelFocusEnd(sessionId) {
+      await localNotifications.cancel({
+        notifications: [{ id: getFocusNotificationId(sessionId) }],
+      });
+    },
+  };
+}
+
 export function createWebNotificationReminderScheduler(
   options: WebNotificationReminderSchedulerOptions = {},
 ): LifeToolsReminderScheduler {
@@ -153,18 +243,23 @@ export function createLifeToolsRuntime(options: LifeToolsRuntimeOptions = {}): L
   const runtimeWindow = options.window ?? getGlobalWindow();
   const electronAPI = runtimeWindow?.electronAPI;
   const fallbackStorage = options.localStorage ?? runtimeWindow?.localStorage ?? getGlobalLocalStorage();
+  const isNative = Capacitor.isNativePlatform();
   const persistence = electronAPI
     ? createElectronConfigLifeToolsPersistence(electronAPI)
-    : createLocalStorageLifeToolsPersistence(fallbackStorage);
+    : isNative
+      ? createCapacitorLifeToolsPersistence()
+      : createLocalStorageLifeToolsPersistence(fallbackStorage);
 
   return {
     persistence,
-    reminders: createWebNotificationReminderScheduler({
-      Notification: options.Notification ?? runtimeWindow?.Notification,
-      clearTimeout: options.clearTimeout,
-      now: options.now,
-      setTimeout: options.setTimeout,
-    }),
+    reminders: isNative && !electronAPI
+      ? createCapacitorReminderScheduler()
+      : createWebNotificationReminderScheduler({
+          Notification: options.Notification ?? runtimeWindow?.Notification,
+          clearTimeout: options.clearTimeout,
+          now: options.now,
+          setTimeout: options.setTimeout,
+        }),
   };
 }
 
@@ -195,6 +290,14 @@ function showFocusEndNotification(
   return new Notification('Focus session complete', {
     body: `${session.presetTitle} is done.`,
   });
+}
+
+function getFocusNotificationId(sessionId: string): number {
+  let hash = 0;
+  for (const char of sessionId) {
+    hash = (Math.imul(31, hash) + char.charCodeAt(0)) | 0;
+  }
+  return (Math.abs(hash) % 2147483647) || 1;
 }
 
 function getGlobalWindow(): RuntimeWindow | undefined {

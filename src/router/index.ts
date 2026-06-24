@@ -13,14 +13,17 @@ const router = createRouter({
     },
     {
       path: '/sync',
+      meta: { requiresElectron: true },
       component: () => import('../views/BlogSync.vue'),
     },
     {
       path: '/agent',
+      meta: { requiresElectron: true },
       component: () => import('../views/Agent.vue'),
     },
     {
       path: '/editor-extensions',
+      meta: { requiresElectron: true },
       component: () => import('../views/EditorExtensions.vue'),
     },
     {
@@ -29,21 +32,35 @@ const router = createRouter({
     },
     {
       path: '/qzone',
+      meta: { requiresElectron: true },
       component: () => import('../views/QzonePublisher.vue'),
     },
     {
       path: '/logs',
+      meta: { requiresElectron: true },
       component: () => import('../views/Logs.vue'),
     },
     {
       path: '/screensaver',
+      meta: { requiresElectron: true },
       component: () => import('../views/Screensaver.vue'),
     },
     {
       path: '/screensaver-window',
+      meta: { requiresElectron: true },
       component: () => import('../views/ScreensaverWindow.vue'),
     },
   ],
 });
+
+router.beforeEach((to) => {
+  if (to.matched.some(route => route.meta.requiresElectron) && !isElectronRuntime()) {
+    return '/life-tools';
+  }
+});
+
+function isElectronRuntime(): boolean {
+  return typeof window !== 'undefined' && Boolean((window as unknown as { electronAPI?: unknown }).electronAPI);
+}
 
 export default router;

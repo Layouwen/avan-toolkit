@@ -10,37 +10,47 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 const router = useRouter();
 const { t } = useI18n();
 
+const isElectronRuntime = computed(() => typeof window !== 'undefined' && Boolean(window.electronAPI));
+
 const tools = computed(() => [
-  {
-    title: t('home.tools.blogSync.title'),
-    description: t('home.tools.blogSync.description'),
-    path: '/sync',
-  },
-  {
-    title: t('home.tools.agent.title'),
-    description: t('home.tools.agent.description'),
-    path: '/agent',
-  },
-  {
-    title: t('home.tools.qzone.title'),
-    description: t('home.tools.qzone.description'),
-    path: '/qzone',
-  },
-  {
-    title: t('home.tools.editorExtensions.title'),
-    description: t('home.tools.editorExtensions.description'),
-    path: '/editor-extensions',
-  },
+  ...(isElectronRuntime.value
+    ? [
+        {
+          title: t('home.tools.blogSync.title'),
+          description: t('home.tools.blogSync.description'),
+          path: '/sync',
+        },
+        {
+          title: t('home.tools.agent.title'),
+          description: t('home.tools.agent.description'),
+          path: '/agent',
+        },
+        {
+          title: t('home.tools.qzone.title'),
+          description: t('home.tools.qzone.description'),
+          path: '/qzone',
+        },
+        {
+          title: t('home.tools.editorExtensions.title'),
+          description: t('home.tools.editorExtensions.description'),
+          path: '/editor-extensions',
+        },
+      ]
+    : []),
   {
     title: t('home.tools.lifeTools.title'),
     description: t('home.tools.lifeTools.description'),
     path: '/life-tools',
   },
-  {
-    title: t('home.tools.screensaver.title'),
-    description: t('home.tools.screensaver.description'),
-    path: '/screensaver',
-  },
+  ...(isElectronRuntime.value
+    ? [
+        {
+          title: t('home.tools.screensaver.title'),
+          description: t('home.tools.screensaver.description'),
+          path: '/screensaver',
+        },
+      ]
+    : []),
 ]);
 </script>
 

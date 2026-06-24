@@ -421,3 +421,87 @@ test('runtime factory chooses Electron persistence when electronAPI exists and f
 
   assert.deepEqual((await fallbackRuntime.persistence.load()).countdownEvents, [countdownEvent({ id: 'fallback' })]);
 });
+
+test('Capacitor persistence uses Preferences and normalizes stored data', async () => {
+  const { LIFE_TOOLS_LOCAL_STORAGE_KEY, createCapacitorLifeToolsPersistence } = loadLifeToolsRuntime();
+  const calls = [];
+  const preferences = {
+    value: JSON.stringify({
+      countdownEvents: [countdownEvent({ id: 'native' }), { title: 'bad' }],
+      focusPresets: [],
+      activeFocusSession: null,
+      focusHistory: [],
+    }),
+    async get(options) {
+      calls.push(['get', options]);
+      return { value: preferences.value };
+    },
+    async set(options) {
+      calls.push(['set', options]);
+      preferences.value = options.value;
+    },
+  };
+  const persistence = createCapacitorLifeToolsPersistence(preferences);
+
+  const loaded = await persistence.load();
+  await persistence.save({
+    countdownEvents: [countdownEvent({ id: 'saved-native' })],
+    focusPresets: [],
+    activeFocusSession: null,
+    focusHistory: [],
+  });
+
+  assert.deepEqual(loaded.countdownEvents, [countdownEvent({ id: 'native' })]);
+  assert.deepEqual(calls[0], ['get', { key: LIFE_TOOLS_LOCAL_STORAGE_KEY }]);
+  assert.equal(calls[1][0], 'set');
+  assert.equal(calls[1][1].key, LIFE_TOOLS_LOCAL_STORAGE_KEY);
+  assert.deepEqual(JSON.parse(preferences.value).countdownEvents, [countdownEvent({ id: 'saved-native' })]);
+  assert.equal(JSON.parse(preferences.value).focusPresets[0].focusMinutes, 25);
+});
+
+test('Capacitor reminder scheduler requests permission, schedules at endsAt, and cancels by hashed id', async () => {
+  const { createCapacitorReminderScheduler } = loadLifeToolsRuntime();
+  const calls = [];
+  const localNotifications = {
+    async requestPermissions() {
+      calls.push(['requestPermissions']);
+      return { display: 'granted' };
+    },
+    async cancel(options) {
+      calls.push(['cancel', options]);
+    },
+    async schedule(options) {
+      calls.push(['schedule', options]);
+      return {};
+    },
+  };
+  const scheduler = createCapacitorReminderScheduler(localNotifications);
+  const session = focusSession({
+    id: 'focus-native',
+    presetTitle: 'Native Focus',
+    endsAt: '2026-06-24T01:05:00.000Z',
+  });
+
+  assert.equal(await scheduler.requestPermission(), true);
+  await scheduler.scheduleFocusEnd(session);
+  await scheduler.cancelFocusEnd(session.id);
+
+  assert.equal(calls[0][0], 'requestPermissions');
+  assert.equal(calls[1][0], 'cancel');
+  assert.equal(calls[2][0], 'schedule');
+  assert.equal(calls[2][1].notifications[0].title, 'Focus session complete');
+  assert.equal(calls[2][1].notifications[0].body, 'Native Focus is done.');
+  assert.equal(calls[2][1].notifications[0].schedule.at.toISOString(), '2026-06-24T01:05:00.000Z');
+  assert.equal(calls[2][1].notifications[0].schedule.allowWhileIdle, true);
+  assert.equal(calls[3][0], 'cancel');
+  assert.equal(calls[1][1].notifications[0].id, calls[2][1].notifications[0].id);
+  assert.equal(calls[3][1].notifications[0].id, calls[2][1].notifications[0].id);
+});
+
+test('runtime factory has a Capacitor native branch before localStorage fallback', () => {
+  const source = fs.readFileSync(path.join(root, 'src/features/life-tools/runtime.ts'), 'utf8');
+
+  assert.match(source, /Capacitor\.isNativePlatform\(\)/);
+  assert.match(source, /createCapacitorLifeToolsPersistence\(\)/);
+  assert.match(source, /createCapacitorReminderScheduler\(\)/);
+});
