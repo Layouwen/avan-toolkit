@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { AppConfig, BlogValidationIssue, BlogValidationResult, ObsidianBlog } from '../electron-api.d';
-import type { BlogTreeNode } from '@/components/BlogTree.vue';
 import type { BadgeVariants } from '@/components/ui/badge';
+import type { BlogTreeNode } from '@/features/blog-sync/types';
+import type { BlogSortBy, SortOrder } from '@/features/blog-sync/utils';
 import { CheckCircle2Icon, ExternalLinkIcon, FolderOpenIcon, Loader2Icon, PlusIcon, RefreshCwIcon, RotateCcwIcon, XIcon } from '@lucide/vue';
 import { computed, nextTick, onMounted, onUnmounted, ref, toRaw } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -24,6 +25,15 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  buildBlogTree,
+  collectBlogTreeFolderKeys,
+  emptyValidationResult,
+  filterBlogsBySelectedTags,
+  inferBlogDefaults,
+  parseCategoryPath,
+  sortBlogs,
+} from '@/features/blog-sync/utils';
 
 const { t } = useI18n();
 
@@ -32,9 +42,6 @@ interface LogLine {
   text: string;
   level: 'info' | 'success' | 'warn' | 'error';
 }
-
-type BlogSortBy = 'fileName' | 'title' | 'updatedAt';
-type SortOrder = 'asc' | 'desc';
 
 const config = ref<AppConfig>({
   obsidianBlogDir: '',
@@ -185,119 +192,13 @@ const contextMenuStyle = computed(() => ({
   top: `${contextMenuY.value}px`,
 }));
 
-const filteredBlogs = computed(() => {
-  if (selectedTagFilters.value.length === 0) {
-    return blogs.value;
-  }
+const filteredBlogs = computed(() => filterBlogsBySelectedTags(blogs.value, selectedTagFilters.value));
 
-  return blogs.value.filter(blog =>
-    selectedTagFilters.value.every(tag => blog.tags.includes(tag)),
-  );
-});
+const sortedBlogs = computed(() => sortBlogs(filteredBlogs.value, blogSortBy.value, blogSortOrder.value));
 
-const sortedBlogs = computed(() => {
-  const direction = blogSortOrder.value === 'asc' ? 1 : -1;
-  return [...filteredBlogs.value].sort((a, b) => {
-    if (blogSortBy.value === 'fileName') {
-      return direction * a.fileName.localeCompare(b.fileName);
-    }
-    if (blogSortBy.value === 'title') {
-      return direction * a.title.localeCompare(b.title);
-    }
-    return direction * a.updatedAt.localeCompare(b.updatedAt);
-  });
-});
+const blogTreeData = computed<BlogTreeNode[]>(() => buildBlogTree(sortedBlogs.value, blogSortBy.value, blogSortOrder.value));
 
-const blogTreeData = computed<BlogTreeNode[]>(() => {
-  const roots: BlogTreeNode[] = [];
-  const folderMap = new Map<string, BlogTreeNode>();
-
-  function getFolder(pathParts: string[]): BlogTreeNode[] {
-    let siblings = roots;
-    let currentPath = '';
-
-    for (const part of pathParts) {
-      currentPath = currentPath ? `${currentPath}/${part}` : part;
-      let folder = folderMap.get(currentPath);
-      if (!folder) {
-        folder = {
-          key: `dir:${currentPath}`,
-          label: part,
-          kind: 'folder',
-          directoryPath: currentPath,
-          children: [],
-        };
-        folderMap.set(currentPath, folder);
-        siblings.push(folder);
-      }
-      siblings = folder.children || [];
-    }
-
-    return siblings;
-  }
-
-  for (const blog of sortedBlogs.value) {
-    const directoryParts = blog.directory ? blog.directory.split('/').filter(Boolean) : [];
-    const siblings = getFolder(directoryParts);
-    siblings.push({
-      key: `blog:${blog.relativePath}`,
-      label: blog.title,
-      kind: 'blog',
-      blog,
-    });
-  }
-
-  function sortNodes(nodes: BlogTreeNode[]) {
-    nodes.sort((a, b) => {
-      if (a.kind !== b.kind) {
-        return a.kind === 'folder' ? -1 : 1;
-      }
-      if (a.kind === 'blog' && b.kind === 'blog') {
-        const aBlog = a.blog;
-        const bBlog = b.blog;
-        if (aBlog && bBlog && blogSortBy.value === 'updatedAt') {
-          const direction = blogSortOrder.value === 'asc' ? 1 : -1;
-          return direction * aBlog.updatedAt.localeCompare(bBlog.updatedAt);
-        }
-        if (aBlog && bBlog && blogSortBy.value === 'fileName') {
-          const direction = blogSortOrder.value === 'asc' ? 1 : -1;
-          return direction * aBlog.fileName.localeCompare(bBlog.fileName);
-        }
-        if (blogSortBy.value === 'title') {
-          const direction = blogSortOrder.value === 'asc' ? 1 : -1;
-          return direction * a.label.localeCompare(b.label);
-        }
-      }
-      return a.label.localeCompare(b.label);
-    });
-    for (const node of nodes) {
-      if (node.children) {
-        sortNodes(node.children);
-      }
-    }
-  }
-
-  sortNodes(roots);
-  return roots;
-});
-
-const allFolderKeys = computed(() => {
-  const keys: Array<string | number> = [];
-
-  function collect(nodes: BlogTreeNode[]) {
-    for (const node of nodes) {
-      if (node.kind === 'folder') {
-        keys.push(node.key);
-      }
-      if (node.children) {
-        collect(node.children);
-      }
-    }
-  }
-
-  collect(blogTreeData.value);
-  return keys;
-});
+const allFolderKeys = computed(() => collectBlogTreeFolderKeys(blogTreeData.value));
 
 function plainConfig(): AppConfig {
   const current = toRaw(config.value);
@@ -449,64 +350,6 @@ function formatUpdatedAt(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value));
-}
-
-function parseCategoryPath(value: string) {
-  return value
-    .split('/')
-    .map(category => category.trim())
-    .filter(Boolean);
-}
-
-function normalizeTreeDirectory(directory: string) {
-  return directory.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
-}
-
-function uniqueTags(tags: string[]) {
-  const nextTags: string[] = [];
-  for (const tag of tags.map(item => item.trim()).filter(Boolean)) {
-    if (!nextTags.includes(tag)) {
-      nextTags.push(tag);
-    }
-  }
-  return nextTags;
-}
-
-function inferBlogDefaults(directory: string) {
-  const normalized = normalizeTreeDirectory(directory);
-  const parts = normalized.split('/').filter(Boolean);
-  if (parts.length === 0) {
-    return {
-      directory: '',
-      tags: [] as string[],
-      categories: '',
-    };
-  }
-
-  const [root, ...children] = parts;
-  const lastPart = children[children.length - 1] || root;
-
-  if (root === 'summary') {
-    return {
-      directory: normalized,
-      tags: uniqueTags(['汇总', ...(children.length > 0 ? [lastPart] : [])]),
-      categories: ['汇总', ...children].join('/'),
-    };
-  }
-
-  if (root === 'article') {
-    return {
-      directory: normalized,
-      tags: uniqueTags(['博客', ...(children.length > 0 ? [lastPart] : [])]),
-      categories: ['博客', ...children].join('/'),
-    };
-  }
-
-  return {
-    directory: normalized,
-    tags: uniqueTags([lastPart]),
-    categories: parts.join('/'),
-  };
 }
 
 function resetCreateBlogForm() {
@@ -792,18 +635,6 @@ function handleCreateModalOpen(open: boolean) {
 
 function canDeleteHexoOrphanIssue(issue: BlogValidationIssue) {
   return issue.source === 'hexo' && issue.field === 'sync:missingObsidian';
-}
-
-function emptyValidationResult(): BlogValidationResult {
-  return {
-    ok: true,
-    issues: [],
-    checkedFiles: 0,
-    obsidianCheckedFiles: 0,
-    hexoCheckedFiles: 0,
-    errorCount: 0,
-    warningCount: 0,
-  };
 }
 
 async function openValidationIssue(issue: BlogValidationIssue) {

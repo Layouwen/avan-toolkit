@@ -1,18 +1,10 @@
 <script setup lang="ts">
 import type { ObsidianBlog } from '../electron-api.d';
+import type { BlogTreeNode } from '@/features/blog-sync/types';
 import { ChevronRightIcon, FileTextIcon, FolderIcon, Loader2Icon } from '@lucide/vue';
 import ConfirmButton from './ConfirmButton.vue';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-
-export interface BlogTreeNode {
-  key: string;
-  label: string;
-  kind: 'folder' | 'blog';
-  directoryPath?: string;
-  blog?: ObsidianBlog;
-  children?: BlogTreeNode[];
-}
 
 const props = defineProps<{
   nodes: BlogTreeNode[];
